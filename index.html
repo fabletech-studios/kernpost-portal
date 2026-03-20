@@ -1,0 +1,2090 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>KernPost - Portal</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    /* --- CSS VARIABLES: TE x Nothing Aesthetic --- */
+    :root {
+      --void:    #1E2023;
+      --base:    #30333A;
+      --mid:     #72676F;
+      --mist:    #9A8D9B;
+      --sage:    #90A6A7;
+      --rose:    #B79D9B;
+      --rust:    #81403D;
+      --text:    #E8E2E5;
+      --sub:     #A89EA5;
+
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-body: 'Inter', sans-serif;
+
+      --border-light: rgba(114, 103, 111, 0.2);
+      --border-mid:   rgba(114, 103, 111, 0.3);
+      --radius:       6px;
+    }
+
+    * { box-sizing: border-box; }
+    
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--void);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 14px;
+      overflow: hidden;
+    }
+
+    /* TYPOGRAPHY */
+    h1, h2, h3, h4, h5, h6, .label, .nav-item {
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      margin: 0;
+      font-weight: 500;
+      color: var(--mist);
+    }
+    
+    h1 { font-size: 16px; color: var(--text); }
+    h2 { font-size: 14px; color: var(--text); }
+    h3 { font-size: 12px; }
+
+    p {
+      line-height: 1.6;
+      color: var(--sub);
+      margin: 0 0 16px 0;
+    }
+
+    /* BUTTONS */
+    button {
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 11px;
+      padding: 8px 16px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: transparent;
+      border: 1px solid var(--border-mid);
+      color: var(--text);
+    }
+    button:hover {
+      background: rgba(114, 103, 111, 0.1);
+      border-color: var(--text);
+    }
+    button.primary {
+      background: var(--base);
+      border-color: var(--mid);
+    }
+    button.primary:hover {
+      border-color: var(--sage);
+      background: rgba(144, 166, 167, 0.1);
+    }
+    button.ghost {
+      border: 1px solid transparent;
+      color: var(--mist);
+    }
+    button.ghost:hover {
+      background: rgba(114, 103, 111, 0.05);
+      color: var(--text);
+    }
+
+    /* INPUTS */
+    input[type="text"], input[type="password"], input[type="email"] {
+      background: #121315; /* Nearly black */
+      border: 1px solid var(--border-mid);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 13px;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      width: 100%;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input::placeholder { color: var(--mid); }
+    input:focus {
+      border-color: var(--sage);
+    }
+
+    /* APP LAYOUT */
+    #site-nav, #site-footer {
+      display: none; /* Mock global nav hidden automatically in this standalone portal */
+    }
+
+    #app {
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+
+    /* --- AUTH VIEW --- */
+    #auth-view {
+      display: none; /* toggled via JS */
+      width: 100%;
+      height: 100%;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--void) 0%, #222025 50%, var(--void) 100%);
+    }
+    .auth-card {
+      width: 360px;
+      padding: 40px;
+      background: rgba(30, 32, 35, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius);
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .auth-logo {
+      font-family: var(--font-mono);
+      font-size: 18px;
+      color: var(--text);
+      letter-spacing: 0.2em;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .auth-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border-light);
+      margin-bottom: -8px;
+    }
+    .auth-tab {
+      flex: 1;
+      text-align: center;
+      padding: 8px 0;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      color: var(--mist);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .auth-tab.active {
+      color: var(--text);
+      border-bottom-color: var(--sage);
+    }
+
+    /* --- PORTAL VIEW --- */
+    #portal-view {
+      display: flex; /* toggled */
+      flex-direction: row;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* SIDEBAR */
+    #sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      background: var(--void);
+      border-right: 1px solid var(--border-light);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 100%;
+      z-index: 50;
+    }
+    .sidebar-top {
+      padding: 24px 0;
+    }
+    .sidebar-brand {
+      padding: 0 24px 32px;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: var(--text);
+      letter-spacing: 0.2em;
+    }
+    .nav-list {
+      display: flex;
+      flex-direction: column;
+      padding: 0 12px;
+      gap: 4px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      font-size: 10px;
+      color: var(--mid);
+      cursor: pointer;
+      border-radius: var(--radius);
+      border: 1px solid transparent;
+      transition: all 0.2s;
+    }
+    .nav-item svg {
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.5;
+    }
+    .nav-item:hover {
+      color: var(--text);
+      background: rgba(114, 103, 111, 0.1);
+    }
+    .nav-item.active {
+      color: var(--sage);
+      background: rgba(144, 166, 167, 0.08);
+      border-color: rgba(144, 166, 167, 0.3);
+    }
+    .nav-item .badge {
+      margin-left: auto;
+      background: var(--rust);
+      color: var(--text);
+      font-size: 8px;
+      padding: 2px 4px;
+      border-radius: 2px;
+      line-height: 1;
+    }
+    .nav-divider {
+      height: 1px;
+      background: var(--border-light);
+      margin: 16px 12px;
+    }
+    .nav-item.support {
+      color: var(--rose);
+    }
+    
+    .sidebar-bottom {
+      padding: 24px;
+      border-top: 1px solid var(--border-light);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    #user-email {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--mid);
+      word-break: break-all;
+    }
+    .btn-signout {
+      border-color: var(--rose);
+      color: var(--rose);
+    }
+    .btn-signout:hover {
+      background: rgba(183, 157, 155, 0.1);
+      border-color: var(--rust);
+      color: var(--rust);
+    }
+
+    /* MAIN CONTENT AREA */
+    #content-area {
+      flex: 1;
+      position: relative;
+      background: linear-gradient(135deg, #2A2C31 0%, var(--base) 40%, var(--void) 100%);
+      overflow: hidden;
+    }
+    .panel {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+    .panel.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    
+    /* generic panel styling for non-dashboard tabs */
+    .generic-panel {
+      padding: 40px 48px;
+      overflow-y: auto;
+    }
+
+    /* --- DASHBOARD OFFICE CANVAS --- */
+    #portal-panel-dashboard {
+      display: flex; /* overridden by .panel rules anyway, it's absolute inset */
+      align-items: center;
+      justify-content: center;
+      position: absolute; /* .panel sets this already, we just add explicit centering */
+    }
+
+    #office-wrapper {
+      position: relative;
+      /* The exact ratio from the floor image */
+      aspect-ratio: 1996 / 1491;
+      width: 100%;
+      max-height: 100%;
+      /* If window is wider than tall based on aspect, limit width to maintain ratio */
+      max-width: calc(100vh * (1996 / 1491));
+      /* Slight scale down so it doesn't touch absolute edges */
+      transform: scale(0.95);
+    }
+
+    .room-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain; /* Floor shell fits exactly */
+    }
+
+    /* Adjust layer sizes */
+    .img-taskboard, .img-window {
+      position: absolute;
+      object-fit: contain;
+    }
+    
+    .img-taskboard {
+      /* Based on taskboard.png 407x445 mapped to 1996x1491 manually.
+         Around left: 63%, top: 12% looks about right on back right wall */
+      width: calc(407 / 1996 * 100%);
+      height: calc(445 / 1491 * 100%);
+      left: 62.5%; 
+      top: 11%;
+      cursor: pointer;
+      transition: filter 0.3s;
+    }
+    .img-taskboard:hover {
+      filter: drop-shadow(0 0 12px rgba(183,157,155,0.6)); /* Gold/Rose glow */
+    }
+
+    .img-window {
+      /* Based on office_window_left.png 677x666.
+         The glass panes are left:236/1996 (11.8%) and 553/1996 (27.7%)
+         We'll position the window img roughly left 8%, top 9% */
+      width: calc(677 / 1996 * 100%);
+      height: calc(666 / 1491 * 100%);
+      left: 8.5%;
+      top: 8.5%;
+      pointer-events: none;
+    }
+
+    /* Sky background visible through panes */
+    .sky-gradient {
+      position: absolute;
+      background: linear-gradient(180deg, #A1C4CD 0%, #E8D5C1 100%);
+      opacity: 0.8;
+      border-radius: 4px; /* subtle roundness behind mullions */
+    }
+
+    /* Desks */
+    .desk-slot {
+      position: absolute;
+      /* Empty desks are 350x350 */
+      width: calc(350 / 1996 * 100%);
+      height: calc(350 / 1491 * 100%);
+      transform-origin: center center;
+    }
+    
+    .desk-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      cursor: pointer;
+      position: relative;
+      z-index: 10;
+      transition: filter 0.3s;
+    }
+    .desk-slot.empty .desk-img:hover {
+      filter: drop-shadow(0px 20px 20px rgba(144, 166, 167, 0.4)); /* Sage radial glow */
+    }
+
+    /* Locked desk */
+    .locked-desk {
+      filter: grayscale(80%) brightness(0.5);
+      cursor: pointer;
+    }
+    .desk-slot.locked .action-bubble {
+      color: var(--rose);
+      border-color: rgba(183, 157, 155, 0.4);
+    }
+    .desk-slot.locked:hover .desk-glow,
+    .locked-glow { display: none; }
+    .desk-slot.locked:hover {
+      filter: drop-shadow(0 0 12px rgba(183,157,155,0.3));
+    }
+
+    /* Agent name label above desk */
+    .desk-name-label {
+      position: absolute;
+      bottom: 102%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(30,32,35,0.9);
+      border: 1px solid rgba(114,103,111,0.3);
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--sage);
+      white-space: nowrap;
+      letter-spacing: 0.1em;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    /* Status dot on occupied desks */
+    .desk-status-dot {
+      position: absolute;
+      top: 12%;
+      right: 12%;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--sage);
+      box-shadow: 0 0 6px var(--sage);
+      pointer-events: none;
+      z-index: 15;
+    }
+
+    /* Tier selector UI */
+    #tier-selector {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding: 12px 16px;
+      background: rgba(30,32,35,0.6);
+      border: 1px solid rgba(114,103,111,0.2);
+      border-radius: 6px;
+      align-items: center;
+    }
+    .tier-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--mist);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-right: 8px;
+    }
+    .tier-btn {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 5px 10px;
+      border: 1px solid rgba(114,103,111,0.25);
+      border-radius: 4px;
+      background: transparent;
+      color: var(--sub);
+      cursor: pointer;
+      letter-spacing: 0.08em;
+      transition: all 0.15s;
+    }
+    .tier-btn:hover { border-color: var(--sage); color: var(--text); }
+    .tier-btn.active {
+      background: rgba(144,166,167,0.12);
+      border-color: var(--sage);
+      color: var(--sage);
+    }
+
+    /* Upgrade modal */
+    #upgrade-modal {
+      width: 380px;
+      text-align: center;
+    }
+    #upgrade-modal .upgrade-icon {
+      font-size: 32px;
+      margin-bottom: 16px;
+    }
+    #upgrade-modal h3 {
+      font-size: 13px;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    #upgrade-modal p {
+      font-size: 12px;
+      color: var(--sub);
+      margin-bottom: 24px;
+    }
+
+    /* Occupied desk context menu */
+    #agent-context-modal {
+      width: 320px;
+    }
+    .context-option {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      border: 1px solid rgba(114,103,111,0.18);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+      margin-bottom: 8px;
+    }
+    .context-option:hover {
+      background: rgba(114,103,111,0.08);
+      border-color: rgba(114,103,111,0.35);
+    }
+    .context-option.danger:hover {
+      background: rgba(129,64,61,0.08);
+      border-color: rgba(129,64,61,0.4);
+    }
+    .context-option svg {
+      width: 18px; height: 18px;
+      stroke: var(--mist); fill: none; stroke-width: 1.5;
+      flex-shrink: 0;
+    }
+    .context-option:hover svg { stroke: var(--text); }
+    .context-option.danger:hover svg { stroke: var(--rose); }
+    .context-option h4 {
+      font-size: 11px; color: var(--text); margin-bottom: 2px;
+    }
+    .context-option.danger h4 { color: var(--rose); }
+    .context-option p { font-size: 10px; color: var(--sub); margin: 0; }
+
+    /* Glow Elements beneath desk */
+    .desk-glow {
+      position: absolute;
+      inset: -20px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(144, 166, 167, 0.4) 0%, transparent 60%);
+      opacity: 0;
+      transition: opacity 0.3s;
+      z-index: 5;
+      pointer-events: none;
+      transform: scaleY(0.5); /* Isometric squash */
+      margin-top: 80%; /* Push to bottom of slot */
+    }
+    .desk-slot.empty:hover .desk-glow {
+      opacity: 1;
+    }
+    .desk-slot.occupied .desk-glow {
+      background: radial-gradient(circle, rgba(183, 157, 155, 0.4) 0%, transparent 60%); /* Rose tint */
+    }
+    .desk-slot.occupied:hover .desk-glow {
+      opacity: 1;
+    }
+
+    /* Action Bubble */
+    .action-bubble {
+      position: absolute;
+      top: -30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: var(--void);
+      border: 1px solid var(--border-light);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      padding: 6px 12px;
+      border-radius: var(--radius);
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s ease;
+      z-index: 20;
+    }
+    .desk-slot:hover .action-bubble {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .desk-slot.empty .action-bubble {
+      color: var(--mist);
+    }
+
+    /* Ambient Taskboard Pulse */
+    .taskboard-pulse {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      background: #dba159; /* Amber */
+      border-radius: 50%;
+      left: 77.5%;
+      top: 17.5%;
+      box-shadow: 0 0 8px #dba159;
+      animation: pulse-amber 2s infinite alternate;
+      z-index: 10;
+      pointer-events: none;
+    }
+    @keyframes pulse-amber {
+      0% { opacity: 0.6; box-shadow: 0 0 4px #dba159; }
+      100% { opacity: 1; box-shadow: 0 0 12px #dba159; }
+    }
+
+    /* --- MODALS --- */
+    #modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(30, 32, 35, 0.8);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-card {
+      background: var(--void);
+      border: 1px solid var(--border-mid);
+      border-radius: var(--radius);
+      width: 400px;
+      padding: 32px;
+      display: none; /* toggled inline */
+      flex-direction: column;
+      gap: 24px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
+    .modal-header {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text);
+      letter-spacing: 0.15em;
+      border-bottom: 1px solid var(--border-light);
+      padding-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Desk Option List */
+    .desk-options { display: flex; flex-direction: column; gap: 12px; }
+    .desk-option {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .desk-option:hover {
+      background: rgba(114, 103, 111, 0.1);
+      border-color: var(--mid);
+    }
+    .desk-option.disabled { opacity: 0.5; cursor: not-allowed; }
+    .desk-option svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: var(--mist);
+      stroke-width: 1.5;
+    }
+    .desk-option:hover svg { stroke: var(--text); }
+    .option-text h4 { font-size: 11px; color: var(--text); margin-bottom: 4px; }
+    .option-text p { font-size: 11px; margin: 0; color: var(--sub); }
+    .desk-option.locked { border-color: rgba(183, 157, 155, 0.3); }
+    .desk-option.locked:hover {
+      background: rgba(183, 157, 155, 0.05);
+      border-color: var(--rose);
+    }
+    .desk-option.locked h4 { color: var(--rose); }
+    .desk-option.locked svg { stroke: var(--rose); }
+
+    /* Agent Gallery */
+    #agent-gallery-modal { width: 460px; }
+    .agent-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    .agent-card {
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius);
+      background: rgba(48, 51, 58, 0.5);
+      cursor: pointer;
+      overflow: hidden;
+      transition: all 0.2s;
+      text-align: center;
+      padding-top: 16px;
+    }
+    .agent-card:hover {
+      border-color: var(--sage);
+      background: rgba(144, 166, 167, 0.1);
+    }
+    .agent-thumb {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+      margin: 0 auto 12px;
+    }
+    .agent-name {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text);
+      letter-spacing: 0.1em;
+      padding: 8px;
+      border-top: 1px solid var(--border-light);
+      background: rgba(0,0,0,0.2);
+    }
+
+    /* --- SLIDING PANELS (RIGHT) --- */
+    .side-panel {
+      position: absolute;
+      top: 0;
+      right: -400px;
+      width: 360px;
+      height: 100%;
+      background: rgba(30, 32, 35, 0.85);
+      backdrop-filter: blur(16px);
+      border-left: 1px solid var(--border-mid);
+      z-index: 60;
+      transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+    }
+    .side-panel.open { right: 0; }
+    .panel-header {
+      padding: 24px;
+      border-bottom: 1px solid var(--border-light);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .panel-header h3 { font-size: 12px; color: var(--text); }
+    .close-btn {
+      background: none; border: none; color: var(--mist);
+      font-size: 20px; line-height: 1; padding: 0; cursor: pointer;
+    }
+    .close-btn:hover { color: var(--text); background:none; border:none;}
+    .panel-content { flex: 1; padding: 24px; overflow-y: auto; }
+    
+    /* Chat layout */
+    .chat-agent-info { display: flex; align-items: center; gap: 16px; margin-bottom: 32px; }
+    .chat-avatar {
+      width: 48px; height: 48px;
+      background: var(--void); border: 1px solid var(--border-light);
+      border-radius: 50%; overflow: hidden; display:flex; align-items:center; justify-content:center;
+    }
+    .chat-avatar img { width: 140%; height: 140%; object-fit: contain; /* zoomed in specifically for avatar map */ margin-top:20px;}
+    .chat-status { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 9px; color: var(--sage); margin-top: 4px; }
+    .status-dot { width: 6px; height: 6px; background: var(--sage); border-radius: 50%; box-shadow: 0 0 4px var(--sage); }
+    .chat-messages { display: flex; flex-direction: column; gap: 16px; }
+    .msg { max-width: 85%; padding: 12px 16px; border-radius: var(--radius); font-size: 12px; line-height: 1.5; }
+    .msg.agent-msg { background: #25272B; border: 1px solid var(--border-light); color: var(--text); align-self: flex-start; border-top-left-radius: 0; }
+    .msg.user-msg { background: rgba(144, 166, 167, 0.1); border: 1px solid var(--sage); color: var(--text); align-self: flex-end; border-top-right-radius: 0; }
+    .chat-input-area { padding: 20px; border-top: 1px solid var(--border-light); display: flex; gap: 12px; }
+    
+    /* Mission Board */
+    .mission-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px; border: 1px solid var(--border-light);
+      border-radius: var(--radius); margin-bottom: 12px; cursor: pointer;
+      background: rgba(48, 51, 58, 0.3); transition: all 0.2s;
+    }
+    .mission-row:hover { border-color: var(--sage); background: rgba(144, 166, 167, 0.05); }
+    .mission-badge {
+      font-family: var(--font-mono); font-size: 9px; padding: 4px 8px;
+      border-radius: 4px; background: rgba(144, 166, 167, 0.15); color: var(--sage);
+    }
+
+    /* --- MOBILE UTILITY HIDING --- */
+    #mobile-portal, #mobile-bottom-sheets, #mobile-sheet-backdrop {
+      display: none;
+    }
+
+    /* MOBILE MQ */
+    @media (max-width: 768px) {
+      
+      /* Hide regular office */
+      #office-wrapper, #tier-selector, #sidebar { display: none !important; }
+      
+      /* Reset dashboard padding for full viewport */
+      #portal-panel-dashboard {
+        padding: 0; overflow: hidden; justify-content: flex-start;
+      }
+      
+      /* Show mobile structure */
+      #mobile-portal, #mobile-bottom-sheets { display: block; }
+      
+      /* Layout mobile cards */
+      #mobile-portal {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        height: 100%;
+        background: var(--void);
+      }
+
+      .mobile-topbar {
+        height: 48px; min-height: 48px;
+        background: #1E2023;
+        border-bottom: 1px solid rgba(114,103,111,0.2);
+        display: flex;
+        align-items: center;
+        padding: 0 16px;
+        justify-content: space-between;
+        flex-shrink: 0;
+      }
+      
+      .topbar-brand {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.2em;
+        color: #90A6A7;
+      }
+
+      .mobile-hamburger {
+        background: none; border: none; color: var(--text); font-size: 24px; line-height: 1; padding: 0; cursor: pointer;
+      }
+
+      #mobile-agent-display {
+        flex: 1;
+        background: linear-gradient(180deg, #1E2023 0%, #25272C 100%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .mobile-agent-info {
+        height: 52px; min-height: 52px;
+        padding: 8px 16px;
+        background: var(--void);
+        flex-shrink: 0;
+      }
+
+      .mobile-carousel-nav {
+        height: 40px; min-height: 40px;
+        background: var(--void);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+        flex-shrink: 0;
+      }
+      
+      .carousel-arrow { font-size: 12px; color: var(--mist); cursor: pointer; padding: 8px; border:none; background:none; }
+      .carousel-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border-mid); transition: all 0.2s; cursor:pointer;}
+      .carousel-dot.active { background: var(--sage); transform: scale(1.3); }
+
+      .mobile-action-bar {
+        height: 56px; min-height: 56px;
+        background: var(--void);
+        border-top: 1px solid var(--border-light);
+        display: flex;
+        flex-shrink: 0;
+      }
+      
+      .mobile-action-btn {
+        flex: 1;
+        border: none;
+        border-right: 1px solid var(--border-light);
+        background: transparent;
+        color: var(--text);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        border-radius: 0;
+      }
+      .mobile-action-btn:last-child { border-right: none; }
+      .mobile-action-btn:active { background: rgba(114,103,111,0.1); }
+
+      /* Bottom Sheets */
+      #mobile-sheet-backdrop {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 150; display: none;
+      }
+      
+      .mobile-sheet {
+        position: fixed;
+        bottom: -100%;
+        left: 0; width: 100%;
+        height: 75vh;
+        background: #1E2023;
+        border-top: 1px solid rgba(114,103,111,0.25);
+        border-radius: 16px 16px 0 0;
+        transition: bottom 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        z-index: 200;
+        display: flex; flex-direction: column;
+        box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+      }
+      
+      .mobile-sheet.open { bottom: 0; }
+      
+      .sheet-handle {
+        width: 36px; height: 4px; border-radius: 2px;
+        background: rgba(114,103,111,0.4); margin: 12px auto 0; flex-shrink: 0;
+      }
+      .sheet-header {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 16px; border-bottom: 1px solid var(--border-light); flex-shrink: 0;
+      }
+      .sheet-content { flex: 1; overflow-y: auto; }
+
+      /* Override layout items for mobile panel flow */
+      #portal-view {
+        flex-direction: column;
+      }
+      #sidebar {
+        width: 100%;
+        height: auto;
+        flex-direction: row;
+        border-right: none;
+        border-bottom: 1px solid var(--border-light);
+        padding: 0;
+        overflow-x: auto;
+      }
+      .sidebar-top {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        padding: 8px;
+      }
+      .sidebar-brand { padding: 0 16px 0 8px; margin: 0; border-right: 1px solid var(--border-light); }
+      .nav-list { flex-direction: row; align-items: center; padding: 0 8px; margin: 0; }
+      .nav-divider { width: 1px; height: 16px; margin: 0 8px; }
+      .sidebar-bottom { border-top: none; border-left: 1px solid var(--border-light); padding: 8px 16px; flex-direction: row; align-items: center; justify-content: center;}
+      .generic-panel { padding: 24px; }
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- Mock Global Site Elements -->
+  <nav id="site-nav"></nav>
+  
+  <div id="app">
+    
+    <!-- AUTH VIEW -->
+    <div id="auth-view">
+      <div class="auth-card">
+        <div class="auth-logo">KERNPOST</div>
+        <div class="auth-tabs">
+          <div class="auth-tab active" id="tab-signin" onclick="switchAuthTab('signin')">SIGN IN</div>
+          <div class="auth-tab" id="tab-signup" onclick="switchAuthTab('signup')">CREATE ACCOUNT</div>
+        </div>
+        
+        <form id="auth-form" onsubmit="handleAuth(event)">
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <div>
+              <label class="label" style="font-size:9px; margin-bottom:4px; display:block;">EMAIL ADDRESS</label>
+              <input type="email" id="auth-email" required placeholder="sysadmin@local.net" />
+            </div>
+            <div>
+              <label class="label" style="font-size:9px; margin-bottom:4px; display:block;">ACCESS KEY (PASSWORD)</label>
+              <input type="password" id="auth-password" required placeholder="••••••••" />
+            </div>
+          </div>
+          <button type="submit" class="primary" style="width:100%; margin-top:16px;" id="auth-submit-btn">INITIALIZE CONNECTION</button>
+        </form>
+        <div id="auth-error" style="color:var(--rust); font-size:11px; font-family:var(--font-mono); display:none;"></div>
+      </div>
+    </div>
+
+    <!-- PORTAL VIEW -->
+    <div id="portal-view">
+      
+      <!-- SIDEBAR -->
+      <aside id="sidebar">
+        <div class="sidebar-top">
+          <div class="sidebar-brand">KERNPOST</div>
+          <div class="nav-list">
+            <div class="nav-item active" onclick="portalTab('dashboard', this)">
+              <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+              MY OFFICE
+            </div>
+            <div class="nav-item" onclick="portalTab('billing', this)">
+              <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+              BILLING & INVOICES
+            </div>
+            <div class="nav-item" onclick="portalTab('tickets', this)">
+              <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+              SUPPORT TICKETS
+              <span class="badge">NEW</span>
+            </div>
+            <div class="nav-item" onclick="portalTab('docs', this)">
+              <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              DOCUMENTATION
+            </div>
+            <div class="nav-divider"></div>
+            <div class="nav-item support" onclick="alert('Support ticket prompt')">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              OPEN TICKET
+            </div>
+          </div>
+        </div>
+        <div class="sidebar-bottom">
+          <div id="user-email">guest@demo.local</div>
+          <button class="btn-signout" onclick="handleSignOut()">SIGN OUT</button>
+          <button class="ghost" onclick="window.location.href='/'">← BACK TO SITE</button>
+        </div>
+      </aside>
+
+      <!-- CONTENT AREA -->
+      <main id="content-area">
+        
+        <!-- DASHBOARD (OFFICE UI) -->
+        <div id="portal-panel-dashboard" class="panel active">
+          
+          <!-- TIER SELECTOR (for demo/testing — will be driven by Supabase in production) -->
+          <div id="tier-selector">
+            <span class="tier-label">TIER ·</span>
+            <button class="tier-btn active" id="tier-btn-Spark" onclick="setTier('Spark')">SPARK</button>
+            <button class="tier-btn" id="tier-btn-Core" onclick="setTier('Core')">CORE</button>
+            <button class="tier-btn" id="tier-btn-Elite" onclick="setTier('Elite')">ELITE</button>
+            <span style="margin-left:auto; font-family:var(--font-mono); font-size:9px; color:var(--mist);" id="tier-active-label">1 AGENT ACTIVE</span>
+          </div>
+
+          <div id="office-wrapper">
+            
+            <!-- Sky Backgrounds for windows -->
+            <div class="sky-gradient" style="left:calc(236/1996*100%); top:calc(351/1491*100%); width:calc(298/1996*100%); height:calc(413/1491*100%);"></div>
+            <div class="sky-gradient" style="left:calc(553/1996*100%); top:calc(168/1491*100%); width:calc(297/1996*100%); height:calc(413/1491*100%);"></div>
+            
+            <!-- Floor -->
+            <img src="./office-assets/office_layer_floor.png" class="room-layer" alt="Office Floor">
+            
+            <!-- Window Left Layer -->
+            <img src="./office-assets/office_window_left.png" class="img-window" alt="Office Windows">
+            
+            <!-- Desks Container -->
+            <div id="desks-container"></div>
+            
+            <!-- Taskboard -->
+            <img src="./office-assets/office_taskboard.png" class="img-taskboard" alt="Taskboard" onclick="openMissionBoard()">
+            <div class="taskboard-pulse"></div>
+            
+          </div>
+          
+          <!-- MOBILE PORTAL (Agent Cards Interface) -->
+          <div id="mobile-portal">
+            <div class="mobile-topbar">
+              <div class="topbar-brand">KERNPOST</div>
+              <div style="display:flex; align-items:center; gap:12px;">
+                <div class="status-dot"></div>
+                <button class="mobile-hamburger" onclick="openMobileSheet('nav-sheet')">≡</button>
+              </div>
+            </div>
+            
+            <div id="mobile-agent-display"></div>
+            
+            <div class="mobile-agent-info">
+              <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <div class="status-dot" id="mobile-agent-dot"></div>
+                  <div id="mobile-agent-name" style="font-family:var(--font-mono); font-size:12px; font-weight:700; color:var(--text);">AGENT</div>
+                </div>
+                <div id="mobile-agent-desk" style="font-family:var(--font-mono); font-size:10px; color:var(--mist);">DESK 01</div>
+              </div>
+              <div style="display:flex; align-items:center; gap:12px;">
+                <div class="activity-bar-bg" style="flex:1; height:2px; background:rgba(114,103,111,0.2); border-radius:1px; overflow:hidden;">
+                  <div id="mobile-activity-bar" style="height:100%; background:var(--sage); transition:width 0.3s; width:0%;"></div>
+                </div>
+                <div id="mobile-agent-status" style="font-family:var(--font-mono); font-size:10px; color:var(--sage); letter-spacing:0.05em; line-height:1;">ACTIVE</div>
+              </div>
+            </div>
+            
+            <div class="mobile-carousel-nav">
+              <button class="carousel-arrow" onclick="prevDesk()">◀</button>
+              <div id="carousel-dots-container" style="display:flex; gap:8px; align-items:center;">
+                <!-- Dots populated by JS -->
+              </div>
+              <button class="carousel-arrow" onclick="nextDesk()">▶</button>
+            </div>
+            
+            <div class="mobile-action-bar">
+              <button class="mobile-action-btn" id="mobile-chat-btn" onclick="openMobileChat()">▶ CHAT</button>
+              <button class="mobile-action-btn" onclick="openMobileSheet('task-sheet'); updateMobileMissionBoard();">✦ TASK</button>
+              <button class="mobile-action-btn" onclick="openMobileMore()">··· MORE</button>
+            </div>
+          </div>
+          
+        </div>
+
+        <!-- BILLING -->
+        <div id="portal-panel-billing" class="panel generic-panel">
+          <h2>Billing & Invoices</h2>
+          <p>Subscription management and past invoices will appear here.</p>
+        </div>
+
+        <!-- TICKETS -->
+        <div id="portal-panel-tickets" class="panel generic-panel">
+          <h2>Support Tickets</h2>
+          <p>Active and resolved system support requests.</p>
+        </div>
+
+        <!-- DOCS -->
+        <div id="portal-panel-docs" class="panel generic-panel">
+          <h2>Documentation</h2>
+          <p>KernPost hardware specs and platform APi details.</p>
+        </div>
+
+      </main>
+      
+      <!-- SLIDING PANELS -->
+      <div id="chat-panel" class="side-panel">
+        <div class="panel-header">
+          <h3>TERMINAL LINK</h3>
+          <button class="close-btn" onclick="closeSidePanels()">×</button>
+        </div>
+        <div class="panel-content">
+          <div class="chat-agent-info">
+            <div class="chat-avatar" id="chat-avatar-container">
+              <!-- img injected by JS -->
+            </div>
+            <div>
+              <h4 id="chat-agent-name" style="color:var(--text); font-size:12px;">AGENT</h4>
+              <div class="chat-status"><div class="status-dot"></div> ONLINE</div>
+            </div>
+          </div>
+          <div class="chat-messages" id="chat-messages-container">
+            <!-- Messages injected -->
+            <div class="msg agent-msg">System link established. Awaiting input.</div>
+          </div>
+        </div>
+        <div class="chat-input-area">
+          <input type="text" placeholder="Command..." style="flex:1;" />
+          <button class="primary" onclick="alert('Send message...')">SEND</button>
+        </div>
+      </div>
+
+      <div id="mission-panel" class="side-panel">
+        <div class="panel-header">
+          <h3>MISSION BOARD</h3>
+          <button class="close-btn" onclick="closeSidePanels()">×</button>
+        </div>
+        <div class="panel-content" id="mission-list-container">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+      
+    </div>
+  </div>
+
+  <!-- MODAL OVERLAY -->
+  <div id="modal-overlay" onclick="closeModals(event)">
+    
+    <!-- DESK OPTIONS MODAL -->
+    <div id="desk-modal" class="modal-card">
+      <div class="modal-header">
+        SLOT CONFIGURATION
+        <button class="close-btn" onclick="closeModals()">×</button>
+      </div>
+      <div class="desk-options">
+        <div class="desk-option" onclick="openAgentGallery()">
+          <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          <div class="option-text">
+            <h4>ASSIGN HOUSE AGENT</h4>
+            <p>Deploy a KernPost pre-built worker</p>
+          </div>
+        </div>
+        <div class="desk-option disabled">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          <div class="option-text">
+            <h4>CREATE CUSTOM AGENT</h4>
+            <p>Design your own (Coming Soon)</p>
+          </div>
+        </div>
+        <div class="desk-option locked" onclick="alert('Upgrade flow...')">
+          <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          <div class="option-text">
+            <h4>UPGRADE PLAN</h4>
+            <p>Unlock this desk slot</p>
+          </div>
+        </div>
+        <div class="desk-option ghost" style="border-color:transparent;" onclick="closeModals()">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          <div class="option-text">
+            <h4 style="color:var(--mist);">LEAVE VACANT</h4>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AGENT GALLERY MODAL -->
+    <div id="agent-gallery-modal" class="modal-card">
+      <div class="modal-header">
+        HOUSE AGENTS
+        <button class="close-btn" onclick="closeModals()">×</button>
+      </div>
+      <div class="agent-grid">
+        <div class="agent-card" onclick="assignAgent('m1')">
+          <img src="./office-assets/house_agent_m1b.png" class="agent-thumb">
+          <div class="agent-name">M-ALPHA</div>
+        </div>
+        <div class="agent-card" onclick="assignAgent('m2')">
+          <img src="./office-assets/house_agent_m2b.png" class="agent-thumb">
+          <div class="agent-name">M-DELTA</div>
+        </div>
+        <div class="agent-card" onclick="assignAgent('m3')">
+          <img src="./office-assets/house_agent_m3b.png" class="agent-thumb">
+          <div class="agent-name">M-SIGMA</div>
+        </div>
+        <div class="agent-card" onclick="assignAgent('f1')">
+          <img src="./office-assets/house_agent_f1b.png" class="agent-thumb">
+          <div class="agent-name">F-NOVA</div>
+        </div>
+        <div class="agent-card" onclick="assignAgent('f2')">
+          <img src="./office-assets/house_agent_f2b.png" class="agent-thumb">
+          <div class="agent-name">F-LYRA</div>
+        </div>
+        <div class="agent-card" onclick="assignAgent('f3')">
+          <img src="./office-assets/house_agent_f3b.png" class="agent-thumb">
+          <div class="agent-name">F-VEGA</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- UPGRADE PROMPT MODAL -->
+    <div id="upgrade-modal" class="modal-card">
+      <div class="modal-header">
+        UPGRADE REQUIRED
+        <button class="close-btn" onclick="closeModals()">×</button>
+      </div>
+      <div style="padding: 8px 0;">
+        <div class="upgrade-icon">⬆</div>
+        <h3 id="upgrade-modal-title">UNLOCK MORE AGENTS</h3>
+        <p id="upgrade-modal-body">Upgrade to KernBox Core to activate up to 3 agents simultaneously.</p>
+        <button class="primary" style="width:100%;" onclick="closeModals()">CONTACT KERNPOST TO UPGRADE</button>
+        <button class="ghost" style="width:100%; margin-top:8px;" onclick="closeModals()">MAYBE LATER</button>
+      </div>
+    </div>
+
+    <!-- AGENT CONTEXT MODAL (occupied desk options) -->
+    <div id="agent-context-modal" class="modal-card">
+      <div class="modal-header">
+        <span id="context-modal-title">AGENT OPTIONS</span>
+        <button class="close-btn" onclick="closeModals()">×</button>
+      </div>
+      <div id="context-options" style="display:flex; flex-direction:column; gap:0;">
+        <div class="context-option" onclick="openAgentChatFromContext()">
+          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+          <div><h4>OPEN CHAT</h4><p>Send a task or question to this agent</p></div>
+        </div>
+        <div class="context-option" onclick="toggleAgentVariant()">
+          <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+          <div><h4 id="variant-toggle-label">SWITCH TO STANDING</h4><p style="font-size:10px;color:var(--sub);margin:0;">Toggle agent pose between working and presenting</p></div>
+        </div>
+        <div class="context-option" onclick="renameAgentPrompt()">
+          <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+          <div><h4>RENAME AGENT</h4><p>Give this agent a custom name</p></div>
+        </div>
+        <div class="context-option danger" onclick="removeAgentConfirm()">
+          <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
+          <div><h4>REMOVE AGENT</h4><p>Clear this desk and return agent to pool</p></div>
+        </div>
+      </div>
+      
+      <div id="rename-form" style="display:none; flex-direction:column; gap:12px; margin-top:8px;">
+        <label style="font-family:var(--font-mono);font-size:9px;color:var(--mist);letter-spacing:0.15em;">NEW AGENT NAME</label>
+        <input id="rename-input" type="text" style="background:rgba(30,32,35,0.9);border:1px solid rgba(114,103,111,0.3);border-radius:6px;padding:10px 14px;color:var(--text);font-family:var(--font-mono);font-size:12px;letter-spacing:0.08em;outline:none;" placeholder="e.g. NOVA-7" />
+        <div style="display:flex;gap:8px;">
+          <button class="primary" style="flex:1;" onclick="confirmRename()">CONFIRM</button>
+          <button class="ghost" style="flex:1;" onclick="cancelRename()">CANCEL</button>
+        </div>
+      </div>
+      
+      <div id="remove-confirm" style="display:none; margin-top:12px; padding:14px; background:rgba(129,64,61,0.08); border:1px solid rgba(129,64,61,0.3); border-radius:6px; text-align:center;">
+        <p style="font-family:var(--font-mono);font-size:10px;color:var(--rose);letter-spacing:0.1em;margin-bottom:12px;">REMOVE AGENT FROM DESK?</p>
+        <div style="display:flex;gap:8px;">
+          <button style="flex:1;background:rgba(129,64,61,0.2);border:1px solid rgba(129,64,61,0.5);color:var(--rose);font-family:var(--font-mono);font-size:10px;padding:8px;border-radius:6px;cursor:pointer;letter-spacing:0.08em;" onclick="confirmRemoveAgent()">CONFIRM REMOVE</button>
+          <button class="ghost" style="flex:1;" onclick="cancelRemove()">CANCEL</button>
+        </div>
+      </div>
+
+    </div>
+    
+  </div>
+
+  <!-- MOBILE BOTTOM SHEETS -->
+  <div id="mobile-sheet-backdrop" onclick="closeMobileSheets()"></div>
+  <div id="mobile-bottom-sheets">
+    
+    <!-- Nav Sheet -->
+    <div id="mobile-nav-sheet" class="mobile-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-content">
+        <div class="nav-list" style="flex-direction:column; align-items:stretch; padding:16px;">
+          <div class="nav-item active" onclick="mobilePortalTab('dashboard'); closeMobileSheets();">MY OFFICE</div>
+          <div class="nav-item" onclick="mobilePortalTab('billing'); closeMobileSheets();">BILLING & INVOICES</div>
+          <div class="nav-item" onclick="mobilePortalTab('tickets'); closeMobileSheets();">SUPPORT TICKETS <span class="badge">NEW</span></div>
+          <div class="nav-item" onclick="mobilePortalTab('docs'); closeMobileSheets();">DOCUMENTATION</div>
+          <div class="nav-divider" style="width:auto; height:1px; margin:12px 0;"></div>
+          <div class="nav-item support" onclick="alert('Support ticket prompt'); closeMobileSheets();">OPEN TICKET</div>
+          <div class="nav-divider" style="width:auto; height:1px; margin:12px 0;"></div>
+          <div style="font-family:var(--font-mono); font-size:10px; color:var(--mid); margin-bottom:12px; padding:0 12px;" id="mobile-user-email">guest@demo.local</div>
+          <div style="display:flex; gap:8px; padding:0 12px;">
+            <button class="btn-signout" style="flex:1;" onclick="handleSignOut()">SIGN OUT</button>
+            <button class="ghost" style="flex:1;" onclick="window.location.href='/'">← SITE</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat Sheet -->
+    <div id="mobile-chat-sheet" class="mobile-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div id="mobile-chat-avatar-container" style="width:36px; height:36px; border-radius:50%; background:var(--void); border:1px solid var(--border-light); overflow:hidden; display:flex; align-items:center; justify-content:center;">
+             <!-- Img injected -->
+          </div>
+          <div>
+            <h4 id="mobile-chat-agent-name" style="color:var(--text); font-size:11px;">AGENT</h4>
+            <div style="display:flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:9px; color:var(--sage); margin-top:4px;">
+              <div class="status-dot"></div> ONLINE
+            </div>
+          </div>
+        </div>
+        <button class="ghost" style="border:none; padding:4px;" onclick="closeMobileSheets()">×</button>
+      </div>
+      <div class="sheet-content" id="mobile-chat-messages-container" style="padding:16px; display:flex; flex-direction:column; gap:12px;">
+        <!-- Messages here -->
+      </div>
+      <div class="chat-input-area" style="padding:12px 16px;">
+        <input type="text" id="mobile-chat-input" placeholder="Command..." style="flex:1; padding:8px 12px; font-size:12px;" />
+        <button class="primary" onclick="sendMobileMessage()" style="padding:8px 16px;">SEND</button>
+      </div>
+    </div>
+
+    <!-- Task Sheet -->
+    <div id="mobile-task-sheet" class="mobile-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <h3 style="font-size:12px; letter-spacing:0.15em;">MISSION BOARD</h3>
+        <button class="ghost" style="border:none; padding:4px;" onclick="closeMobileSheets()">×</button>
+      </div>
+      <div class="sheet-content" id="mobile-mission-list-container" style="padding:16px;">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+    <!-- More Sheet -->
+    <div id="mobile-more-sheet" class="mobile-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <h3 style="font-size:12px; letter-spacing:0.15em;">AGENT OPTIONS</h3>
+        <button class="ghost" style="border:none; padding:4px;" onclick="closeMobileSheets()">×</button>
+      </div>
+      <div class="sheet-content" id="mobile-more-options" style="padding:16px; display:flex; flex-direction:column; gap:8px;">
+        <!-- Injected options based on desk state -->
+      </div>
+    </div>
+
+    <!-- Agent Gallery Sheet -->
+    <div id="mobile-gallery-sheet" class="mobile-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <h3 style="font-size:12px; letter-spacing:0.15em;">HOUSE AGENTS</h3>
+        <button class="ghost" style="border:none; padding:4px;" onclick="openMobileSheet('more-sheet')">← BACK</button>
+      </div>
+      <div class="sheet-content" style="padding:16px;">
+        <div class="agent-grid" style="grid-template-columns: repeat(2, 1fr);">
+          <div class="agent-card" onclick="assignAgent('m1')">
+            <img src="./office-assets/house_agent_m1b.png" class="agent-thumb">
+            <div class="agent-name">M-ALPHA</div>
+          </div>
+          <div class="agent-card" onclick="assignAgent('m2')">
+            <img src="./office-assets/house_agent_m2b.png" class="agent-thumb">
+            <div class="agent-name">M-DELTA</div>
+          </div>
+          <div class="agent-card" onclick="assignAgent('m3')">
+            <img src="./office-assets/house_agent_m3b.png" class="agent-thumb">
+            <div class="agent-name">M-SIGMA</div>
+          </div>
+          <div class="agent-card" onclick="assignAgent('f1')">
+            <img src="./office-assets/house_agent_f1b.png" class="agent-thumb">
+            <div class="agent-name">F-NOVA</div>
+          </div>
+          <div class="agent-card" onclick="assignAgent('f2')">
+            <img src="./office-assets/house_agent_f2b.png" class="agent-thumb">
+            <div class="agent-name">F-LYRA</div>
+          </div>
+          <div class="agent-card" onclick="assignAgent('f3')">
+            <img src="./office-assets/house_agent_f3b.png" class="agent-thumb">
+            <div class="agent-name">F-VEGA</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer id="site-footer"></footer>
+
+  <script>
+    // System Constants
+    const SUPABASE_URL = 'https://ifcmenaqvxdsnimziuem.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlmY21lbmFxdnhkc25pbXppdWVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzOTUyNzAsImV4cCI6MjA4ODk3MTI3MH0.FzADPnGNb2ZJ04MtO8m7tdHQW6VXZLirzHmge26Fv1c';
+    
+    // Initialize Supabase conditionally
+    let supabaseClient = null;
+    if (SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+      try {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      } catch(e) { console.warn("Supabase initialization skipped.", e); }
+    }
+    
+    // Calibrated slot coordinates + fill offsets (fillDx/fillDy shift wrapper when agent assigned)
+    const OFFICE_SLOT_COORDS = {
+      1: { left: 98,  top: 667,  fillDx: -123, fillDy: -89  },
+      2: { left: 466, top: 450,  fillDx: -89,  fillDy: -107 },
+      3: { left: 816, top: 248,  fillDx: -131, fillDy: -93  },
+      4: { left: 415, top: 855,  fillDx: -104, fillDy: -88  },
+      5: { left: 782, top: 637,  fillDx: -97,  fillDy: -106 },
+      6: { left: 1139,top: 436,  fillDx: -130, fillDy: -93  },
+      7: { left: 734, top: 1040, fillDx: -126, fillDy: -107 },
+      8: { left: 1103,top: 823,  fillDx: -128, fillDy: -92  }
+    };
+
+    // Tier config — controls how many desks are active vs locked
+    const TIER_CONFIG = {
+      Spark: { active: 1, label: 'KernBox Spark' },
+      Core:  { active: 3, label: 'KernBox Core'  },
+      Elite: { active: 8, label: 'KernBox Elite' }
+    };
+
+    // Set current customer tier here (will come from Supabase customers.tier in production)
+    let CURRENT_TIER = 'Spark'; // 'Spark' | 'Core' | 'Elite'
+
+    const AGENT_NAMES = {
+      m1: 'M-ALPHA', m2: 'M-DELTA', m3: 'M-SIGMA',
+      f1: 'F-NOVA',  f2: 'F-LYRA',  f3: 'F-VEGA'
+    };
+
+    const NEXT_TIER = { Spark: 'Core', Core: 'Elite', Elite: null };
+
+    // Desk state — status: 'empty' | 'occupied' | 'locked'
+    const desksData = Array.from({length: 8}, (_, i) => ({
+      id: i + 1,
+      status: 'empty',
+      agent: null,      // e.g. 'm1' (base id, no variant)
+      variant: 'a',     // 'a' = typing, 'b' = hands off, 'c' = standing
+      name: null        // custom name override, else uses AGENT_NAMES
+    }));
+
+    let authMode = 'signin'; 
+    
+    // Core Functions
+    function router() {
+      // Hide global site elements safely if they exist
+      const gNav = document.getElementById('site-nav');
+      if(gNav) gNav.style.display = 'none';
+      const gFoot = document.getElementById('site-footer');
+      if(gFoot) gFoot.style.display = 'none';
+      
+      renderPortalState();
+    }
+
+    async function renderPortalState() {
+      let session = null;
+      if (supabaseClient) {
+        const { data } = await supabaseClient.auth.getSession();
+        session = data?.session;
+      }
+      
+      if (session) {
+        document.getElementById('auth-view').style.display = 'none';
+        document.getElementById('portal-view').style.display = 'flex';
+        document.getElementById('user-email').innerText = session.user.email;
+        renderOfficeDesks();
+      } else {
+        // Fallback demo/MOCK mode if unauthenticated or Supabase unconfigured
+        document.getElementById('auth-view').style.display = 'none';
+        document.getElementById('portal-view').style.display = 'flex';
+        renderOfficeDesks();
+      }
+    }
+
+    function renderOfficeDesks() {
+      const container = document.getElementById('desks-container');
+      container.innerHTML = '';
+
+      const activeTier = TIER_CONFIG[CURRENT_TIER] || TIER_CONFIG.Spark;
+
+      Object.entries(OFFICE_SLOT_COORDS).forEach(([idStr, coords]) => {
+        const id = parseInt(idStr);
+        const dData = desksData.find(d => d.id === id);
+
+        // Determine if this slot is locked by tier
+        const isLocked = id > activeTier.active;
+        if (isLocked) dData.status = 'locked';
+        else if (dData.status === 'locked') dData.status = 'empty'; // unlock if tier upgraded
+
+        const deskDiv = document.createElement('div');
+        deskDiv.className = `desk-slot ${dData.status}`;
+        deskDiv.style.zIndex = Math.floor(coords.top);
+        deskDiv.setAttribute('data-id', id);
+
+        if (dData.status === 'occupied') {
+          // Shift wrapper to accommodate 450x450 agent PNG
+          const adjLeft = coords.left + coords.fillDx;
+          const adjTop  = coords.top  + coords.fillDy;
+          deskDiv.style.left   = `calc(${adjLeft} / 1996 * 100%)`;
+          deskDiv.style.top    = `calc(${adjTop}  / 1491 * 100%)`;
+          deskDiv.style.width  = `calc(450 / 1996 * 100%)`;
+          deskDiv.style.height = `calc(450 / 1491 * 100%)`;
+        } else {
+          deskDiv.style.left   = `calc(${coords.left} / 1996 * 100%)`;
+          deskDiv.style.top    = `calc(${coords.top}  / 1491 * 100%)`;
+          deskDiv.style.width  = `calc(350 / 1996 * 100%)`;
+          deskDiv.style.height = `calc(350 / 1491 * 100%)`;
+        }
+
+        let bubbleText = '';
+        let imgHtml = '';
+        let nameLabel = '';
+        let glowClass = 'desk-glow';
+
+        if (dData.status === 'locked') {
+          const next = NEXT_TIER[CURRENT_TIER];
+          bubbleText = next ? `[ UPGRADE TO ${next.toUpperCase()} ]` : '[ LOCKED ]';
+          imgHtml = `<img src="./office-assets/desk_empty.png" 
+                          class="desk-img locked-desk" 
+                          onclick="openUpgradePrompt(${id})" />`;
+          glowClass = 'desk-glow locked-glow';
+
+        } else if (dData.status === 'empty') {
+          bubbleText = '[ VACANT ]';
+          imgHtml = `<img src="./office-assets/desk_empty.png" 
+                          class="desk-img" 
+                          onclick="openDeskMenu(${id})" />`;
+
+        } else {
+          // occupied
+          const baseName = AGENT_NAMES[dData.agent] || dData.agent.toUpperCase();
+          const displayName = dData.name || baseName;
+          bubbleText = `${displayName} · CLICK TO CHAT`;
+          glowClass = 'desk-glow occupied-glow';
+          nameLabel = `<div class="desk-name-label">${displayName}</div>`;
+
+          // Variant c (standing) uses different sizing
+          const isStanding = dData.variant === 'c';
+          const imgStyle = isStanding
+            ? 'width: 30%; height: 80%; object-fit: contain; margin-left: 25%; margin-top: 5%;'
+            : 'width: 100%; height: 100%; object-fit: contain;';
+
+          imgHtml = `<img src="./office-assets/house_agent_${dData.agent}${dData.variant}.png" 
+                          class="desk-img" 
+                          style="${imgStyle}"
+                          onclick="openAgentContext(${id})" />`;
+        }
+
+        deskDiv.innerHTML = `
+          <div class="${glowClass}"></div>
+          ${nameLabel}
+          <div class="action-bubble">${bubbleText}</div>
+          ${imgHtml}
+        `;
+        container.appendChild(deskDiv);
+      });
+      if (typeof renderMobileDesk === 'function') setTimeout(() => { if (window.innerWidth <= 768) renderMobileDesk(currentMobileDesk); }, 0);
+    }
+
+    let activeConfigDeskId = null; 
+
+    function openDeskMenu(deskId) {
+      activeConfigDeskId = deskId;
+      document.getElementById('modal-overlay').style.display = 'flex';
+      document.getElementById('desk-modal').style.display = 'flex';
+      document.getElementById('agent-gallery-modal').style.display = 'none';
+      document.getElementById('upgrade-modal').style.display = 'none';
+      document.getElementById('agent-context-modal').style.display = 'none';
+    }
+
+    function openUpgradePrompt(deskId) {
+      const next = NEXT_TIER[CURRENT_TIER];
+      const nextLabel = next ? `KernBox ${next}` : 'a higher tier';
+      const nextCount = next ? TIER_CONFIG[next].active : 8;
+      document.getElementById('upgrade-modal-title').textContent = `DESK ${deskId} IS LOCKED`;
+      document.getElementById('upgrade-modal-body').textContent =
+        `Upgrade to ${nextLabel} to activate up to ${nextCount} agents simultaneously.`;
+      document.getElementById('modal-overlay').style.display = 'flex';
+      document.getElementById('upgrade-modal').style.display = 'flex';
+      document.getElementById('desk-modal').style.display = 'none';
+      document.getElementById('agent-context-modal').style.display = 'none';
+    }
+
+    function openAgentContext(deskId) {
+      activeConfigDeskId = deskId;
+      const dData = desksData.find(d => d.id === deskId);
+      const name = dData.name || AGENT_NAMES[dData.agent] || 'AGENT';
+      document.getElementById('context-modal-title').textContent = name + ' · DESK ' + deskId;
+      document.getElementById('variant-toggle-label').textContent =
+        dData.variant === 'c' ? 'SWITCH TO SEATED (working)' : 'SWITCH TO STANDING (presenting)';
+      document.getElementById('modal-overlay').style.display = 'flex';
+      document.getElementById('agent-context-modal').style.display = 'flex';
+      document.getElementById('desk-modal').style.display = 'none';
+      document.getElementById('upgrade-modal').style.display = 'none';
+      
+      // Reset sub-views
+      document.getElementById('context-options').style.display = 'flex';
+      document.getElementById('rename-form').style.display = 'none';
+      document.getElementById('remove-confirm').style.display = 'none';
+    }
+
+    function openAgentChatFromContext() {
+      const id = activeConfigDeskId; // save before closeModals nulls it
+      closeModals();
+      openAgentChat(id);
+    }
+
+    function toggleAgentVariant() {
+      const dData = desksData.find(d => d.id === activeConfigDeskId);
+      if (!dData) return;
+      dData.variant = dData.variant === 'c' ? 'a' : 'c';
+      closeModals();
+      renderOfficeDesks();
+    }
+
+    function renameAgentPrompt() {
+      const dData = desksData.find(d => d.id === activeConfigDeskId);
+      if (!dData) return;
+      document.getElementById('modal-overlay').style.display = 'flex';
+      document.getElementById('agent-context-modal').style.display = 'flex';
+      document.getElementById('rename-input').value = dData.name || AGENT_NAMES[dData.agent] || '';
+      document.getElementById('context-options').style.display = 'none';
+      document.getElementById('rename-form').style.display = 'flex';
+      document.getElementById('remove-confirm').style.display = 'none';
+      document.getElementById('desk-modal').style.display = 'none';
+      document.getElementById('upgrade-modal').style.display = 'none';
+    }
+
+    function confirmRename() {
+      const dData = desksData.find(d => d.id === activeConfigDeskId);
+      const val = document.getElementById('rename-input').value.trim();
+      if (dData && val) {
+        dData.name = val.toUpperCase();
+        renderOfficeDesks();
+        updateMissionBoard();
+      }
+      cancelRename();
+      closeModals();
+    }
+
+    function cancelRename() {
+      document.getElementById('rename-form').style.display = 'none';
+      document.getElementById('context-options').style.display = 'flex';
+    }
+
+    function removeAgentConfirm() {
+      document.getElementById('modal-overlay').style.display = 'flex';
+      document.getElementById('agent-context-modal').style.display = 'flex';
+      document.getElementById('desk-modal').style.display = 'none';
+      document.getElementById('upgrade-modal').style.display = 'none';
+      document.getElementById('context-options').style.display = 'none';
+      document.getElementById('rename-form').style.display = 'none';
+      document.getElementById('remove-confirm').style.display = 'block';
+    }
+
+    function confirmRemoveAgent() {
+      const dData = desksData.find(d => d.id === activeConfigDeskId);
+      if (dData) {
+        dData.status = 'empty';
+        dData.agent = null;
+        dData.variant = 'a';
+        dData.name = null;
+      }
+      document.getElementById('remove-confirm').style.display = 'none';
+      closeModals();
+      renderOfficeDesks();
+      updateMissionBoard();
+    }
+
+    function cancelRemove() {
+      document.getElementById('remove-confirm').style.display = 'none';
+    }
+
+    function closeModals(e) {
+      if (e && e.target !== document.getElementById('modal-overlay')) return;
+      document.getElementById('modal-overlay').style.display = 'none';
+      ['desk-modal','agent-gallery-modal','upgrade-modal','agent-context-modal']
+        .forEach(id => document.getElementById(id).style.display = 'none');
+      activeConfigDeskId = null;
+      if (window.innerWidth <= 768 && typeof closeMobileSheets === 'function') closeMobileSheets();
+    }
+
+    function openAgentGallery() {
+      document.getElementById('desk-modal').style.display = 'none';
+      document.getElementById('agent-gallery-modal').style.display = 'flex';
+    }
+
+    function assignAgent(baseId) {
+      if (!activeConfigDeskId) return;
+      const dData = desksData.find(d => d.id === activeConfigDeskId);
+      dData.status = 'occupied';
+      dData.agent = baseId;
+      dData.variant = 'a';
+      dData.name = null;
+      closeModals();
+      renderOfficeDesks();
+      updateMissionBoard();
+    }
+
+    function setTier(tier) {
+      CURRENT_TIER = tier;
+      // Update UI buttons
+      document.querySelectorAll('.tier-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(`tier-btn-${tier}`).classList.add('active');
+      const count = TIER_CONFIG[tier].active;
+      document.getElementById('tier-active-label').textContent =
+        count === 8 ? 'UNLIMITED AGENTS' : `${count} AGENT${count > 1 ? 'S' : ''} ACTIVE`;
+      renderOfficeDesks();
+    }
+
+    function updateMissionBoard() {
+      const container = document.getElementById('mission-list-container');
+      if (!container) return;
+      const occupied = desksData.filter(d => d.status === 'occupied');
+      if (occupied.length === 0) {
+        container.innerHTML = '<p style="font-family:var(--font-mono);font-size:11px;color:var(--mist);padding:16px 0;">No agents assigned yet.</p>';
+        return;
+      }
+      container.innerHTML = occupied.map(d => {
+        const name = d.name || AGENT_NAMES[d.agent] || 'AGENT';
+        return `<div class="mission-row" onclick="openAgentChat(${d.id})">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div class="status-dot"></div>
+            <div>
+              <div style="font-family:var(--font-mono);font-size:10px;color:var(--text);letter-spacing:0.1em;">${name}</div>
+              <div style="font-family:var(--font-mono);font-size:9px;color:var(--mist);margin-top:2px;">DESK ${d.id}</div>
+            </div>
+          </div>
+          <div class="mission-badge">ACTIVE</div>
+        </div>`;
+      }).join('');
+    }
+
+    function openAgentChat(deskId) {
+      const dData = desksData.find(d => d.id === deskId);
+      if (!dData || dData.status !== 'occupied') return;
+
+      const name = dData.name || AGENT_NAMES[dData.agent] || 'AGENT';
+      document.getElementById('chat-agent-name').innerText = name;
+      document.getElementById('chat-avatar-container').innerHTML =
+        `<img src="./office-assets/house_agent_${dData.agent}b.png"
+              style="width:140%;height:140%;object-fit:contain;margin-top:20%;">`;
+
+      const msgs = document.getElementById('chat-messages-container');
+      msgs.innerHTML = `<div class="msg agent-msg">System link established. ${name} online — awaiting input.</div>`;
+
+      closeSidePanels();
+      document.getElementById('chat-panel').classList.add('open');
+
+      // Wire send button
+      const input = document.querySelector('.chat-input-area input');
+      const sendBtn = document.querySelector('.chat-input-area button');
+      sendBtn.onclick = () => sendMessage(name);
+      input.onkeydown = (e) => { if (e.key === 'Enter') sendMessage(name); };
+    }
+
+    function sendMessage(agentName) {
+      const input = document.querySelector('.chat-input-area input');
+      const text = input.value.trim();
+      if (!text) return;
+      const msgs = document.getElementById('chat-messages-container');
+      msgs.innerHTML += `<div class="msg user-msg">${text}</div>`;
+      input.value = '';
+      msgs.scrollTop = msgs.scrollHeight;
+      const replies = [
+        'Understood. Processing your request.',
+        'On it. I\'ll flag anything that needs your attention.',
+        'Got it. Running that in the background.',
+        'Confirmed. I\'ll update the mission board when complete.',
+        'Received. Executing now.'
+      ];
+      setTimeout(() => {
+        msgs.innerHTML += `<div class="msg agent-msg">${replies[Math.floor(Math.random()*replies.length)]}</div>`;
+        msgs.scrollTop = msgs.scrollHeight;
+      }, 800);
+    }
+
+    function openMissionBoard() {
+      closeSidePanels();
+      updateMissionBoard();
+      document.getElementById('mission-panel').classList.add('open');
+    }
+
+    function closeSidePanels() {
+      document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open'));
+    }
+
+    function portalTab(tabId, el) {
+      // Remove active from all nav items
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      // Add active to clicked
+      el.classList.add('active');
+      
+      // Hide all panels
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      // Show target panel
+      document.getElementById(`portal-panel-${tabId}`).classList.add('active');
+    }
+
+    function switchAuthTab(mode) {
+      authMode = mode;
+      document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+      document.getElementById(`tab-${mode}`).classList.add('active');
+      document.getElementById('auth-submit-btn').innerText = mode === 'signin' ? 'INITIALIZE CONNECTION' : 'CREATE ACCOUNT';
+    }
+
+    async function handleAuth(e) {
+      e.preventDefault();
+      const email = document.getElementById('auth-email').value;
+      const pwd = document.getElementById('auth-password').value;
+      const errBox = document.getElementById('auth-error');
+      errBox.style.display = 'none';
+
+      if (!supabaseClient) {
+        // MOCK AUTH SUCCESS
+        document.getElementById('auth-view').style.display = 'none';
+        document.getElementById('portal-view').style.display = 'flex';
+        document.getElementById('user-email').innerText = email;
+        renderOfficeDesks();
+        return;
+      }
+
+      // ACTAUL AUTH
+      const { data, error } = authMode === 'signin' 
+        ? await supabaseClient.auth.signInWithPassword({ email, password: pwd })
+        : await supabaseClient.auth.signUp({ email, password: pwd });
+        
+      if (error) {
+        errBox.innerText = error.message;
+        errBox.style.display = 'block';
+      } else {
+        router();
+      }
+    }
+
+    async function handleSignOut() {
+      if (supabaseClient) {
+        await supabaseClient.auth.signOut();
+      }
+      window.location.reload();
+    }
+
+    // Initialize
+    window.onload = () => {
+      router();
+      if(typeof initMobile === 'function') initMobile();
+    };
+
+    // --- MOBILE AGENT CARDS LOGIC --- //
+    let currentMobileDesk = 1;
+    let touchStartX = 0;
+
+    function initMobile() {
+      const dotsContainer = document.getElementById('carousel-dots-container');
+      if (dotsContainer) {
+        dotsContainer.innerHTML = Array.from({length: 8}, (_, i) => 
+          `<div class="carousel-dot" onclick="jumpToDesk(${i+1})"></div>`
+        ).join('');
+      }
+      
+      const officeArea = document.getElementById('mobile-agent-display');
+      if (officeArea) {
+        officeArea.addEventListener('pointerdown', e => { touchStartX = e.clientX; });
+        officeArea.addEventListener('pointerup', e => {
+          const diff = touchStartX - e.clientX;
+          if (Math.abs(diff) > 50) {
+            diff > 0 ? nextDesk() : prevDesk();
+          }
+        });
+      }
+      renderMobileDesk(1);
+    }
+
+    function jumpToDesk(id) {
+      currentMobileDesk = id;
+      renderMobileDesk(id);
+    }
+    
+    function nextDesk() {
+      currentMobileDesk = (currentMobileDesk % 8) + 1;
+      renderMobileDesk(currentMobileDesk);
+    }
+    
+    function prevDesk() {
+      currentMobileDesk = currentMobileDesk === 1 ? 8 : currentMobileDesk - 1;
+      renderMobileDesk(currentMobileDesk);
+    }
+
+    function renderMobileDesk(id) {
+      if(window.innerWidth > 768) return; 
+      const dData = desksData.find(d => d.id === id);
+      const activeTier = TIER_CONFIG[CURRENT_TIER] || TIER_CONFIG.Spark;
+      const isLocked = id > activeTier.active;
+
+      document.querySelectorAll('.carousel-dot').forEach((dot, i) => {
+        dot.classList.toggle('active', i + 1 === id);
+      });
+
+      const agentDisplay = document.getElementById('mobile-agent-display');
+      const agentName = document.getElementById('mobile-agent-name');
+      const agentDesk = document.getElementById('mobile-agent-desk');
+      const agentStatus = document.getElementById('mobile-agent-status');
+      const activityBar = document.getElementById('mobile-activity-bar');
+      const chatBtn = document.getElementById('mobile-chat-btn');
+      if(!agentDisplay) return;
+
+      agentDesk.textContent = `DESK 0${id}`;
+
+      if (isLocked) {
+        agentDisplay.innerHTML = `
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style="opacity:0.4;margin-bottom:16px;">
+            <rect x="8" y="22" width="32" height="22" rx="3" stroke="#B79D9B" stroke-width="2"/>
+            <path d="M16 22V16a8 8 0 0116 0v6" stroke="#B79D9B" stroke-width="2"/>
+          </svg>
+          <div style="font-family:var(--font-mono);font-size:10px;color:var(--rose);letter-spacing:0.15em;">UPGRADE TO UNLOCK</div>`;
+        agentName.textContent = 'LOCKED';
+        agentStatus.textContent = 'LOCKED';
+        agentStatus.style.color = 'var(--rose)';
+        activityBar.style.width = '0%';
+        chatBtn.style.opacity = '0.4';
+
+      } else if (!dData || dData.status === 'empty') {
+        agentDisplay.innerHTML = `
+          <div onclick="openMobileMore()" style="cursor:pointer; width:80px;height:80px;border-radius:50%;
+                      background:rgba(144,166,167,0.05); border:1px solid rgba(144,166,167,0.15);
+                      display:flex;align-items:center;justify-content:center;margin-bottom:24px;
+                      box-shadow: 0 0 20px rgba(144,166,167,0.05), inset 0 0 10px rgba(144,166,167,0.05); transition:all 0.3s ease;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--sage)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 6px rgba(118,197,163,0.6));">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </div>
+          <div style="font-family:var(--font-mono);font-size:10px;color:rgba(144,166,167,0.4);letter-spacing:0.15em;">[ VACANT ]</div>`;
+        agentName.textContent = 'VACANT';
+        agentStatus.textContent = 'UNASSIGNED';
+        agentStatus.style.color = 'var(--mist)';
+        activityBar.style.width = '0%';
+        chatBtn.style.opacity = '0.4';
+
+      } else {
+        const name = dData.name || AGENT_NAMES[dData.agent] || 'AGENT';
+        agentDisplay.innerHTML = `<img src="./office-assets/house_agent_${dData.agent}${dData.variant}.png"
+          style="max-height:85%;max-width:100%;object-fit:contain;
+                 filter:drop-shadow(0 20px 40px rgba(0,0,0,0.5));">`;
+        agentName.textContent = name;
+        agentStatus.textContent = 'ACTIVE';
+        agentStatus.style.color = 'var(--sage)';
+        activityBar.style.width = '65%';
+        chatBtn.style.opacity = '1';
+      }
+    }
+
+    function openMobileSheet(sheetId) {
+      document.getElementById('mobile-sheet-backdrop').style.display = 'block';
+      document.getElementById('mobile-' + sheetId).classList.add('open');
+    }
+    
+    function closeMobileSheets() {
+      document.getElementById('mobile-sheet-backdrop').style.display = 'none';
+      document.querySelectorAll('.mobile-sheet').forEach(s => s.classList.remove('open'));
+    }
+    
+    function openMobileChat() {
+      const dData = desksData.find(d => d.id === currentMobileDesk);
+      if (!dData || dData.status !== 'occupied') {
+        const btn = document.getElementById('mobile-chat-btn');
+        const oldText = btn.textContent;
+        btn.textContent = 'ASSIGN AGENT FIRST';
+        setTimeout(() => btn.textContent = oldText, 1500);
+        return;
+      }
+      activeConfigDeskId = currentMobileDesk;
+      
+      const name = dData.name || AGENT_NAMES[dData.agent] || 'AGENT';
+      document.getElementById('mobile-chat-agent-name').innerText = name;
+      document.getElementById('mobile-chat-avatar-container').innerHTML =
+        `<img src="./office-assets/house_agent_${dData.agent}b.png"
+              style="width:140%;height:140%;object-fit:contain;margin-top:20%;">`;
+              
+      document.getElementById('mobile-chat-messages-container').innerHTML = 
+        `<div class="msg agent-msg">System link established. ${name} online — awaiting input.</div>`;
+        
+      openMobileSheet('chat-sheet');
+    }
+    
+    function openMobileMore() {
+      activeConfigDeskId = currentMobileDesk;
+      const dData = desksData.find(d => d.id === currentMobileDesk);
+      const activeTier = TIER_CONFIG[CURRENT_TIER] || TIER_CONFIG.Spark;
+      const isLocked = currentMobileDesk > activeTier.active;
+      
+      const container = document.getElementById('mobile-more-options');
+      if (isLocked) {
+        container.innerHTML = `<button class="primary" style="width:100%; padding:14px;" onclick="closeMobileSheets(); window.alert('Contact KernPost to Upgrade')">UPGRADE PLAN TO UNLOCK</button>`;
+      } else if (!dData || dData.status === 'empty') {
+        container.innerHTML = `
+          <button class="primary" style="width:100%; padding:14px;" onclick="closeMobileSheets(); openMobileSheet('gallery-sheet')">ASSIGN HOUSE AGENT</button>
+          <button class="ghost" style="width:100%; padding:14px; opacity:0.5; margin-top:8px;">CREATE CUSTOM AGENT</button>
+        `;
+      } else {
+        const poseText = dData.variant === 'c' ? 'SWITCH TO SEATED' : 'SWITCH TO STANDING';
+        container.innerHTML = `
+          <button class="ghost" style="width:100%; padding:14px;" onclick="closeMobileSheets(); renameAgentPrompt()">RENAME AGENT</button>
+          <button class="ghost" style="width:100%; padding:14px; margin-top:8px;" onclick="closeMobileSheets(); toggleAgentVariant()">${poseText}</button>
+          <button class="ghost" style="width:100%; padding:14px; color:var(--rose); border-color:var(--rose); margin-top:8px;" onclick="closeMobileSheets(); removeAgentConfirm()">REMOVE AGENT</button>
+        `;
+      }
+      openMobileSheet('more-sheet');
+    }
+
+    function sendMobileMessage() {
+      const input = document.getElementById('mobile-chat-input');
+      const text = input.value.trim();
+      if (!text) return;
+      
+      const msgs = document.getElementById('mobile-chat-messages-container');
+      msgs.innerHTML += `<div class="msg user-msg">${text}</div>`;
+      input.value = '';
+      msgs.scrollTop = msgs.scrollHeight;
+      
+      const replies = ['Understood. Processing your request.', 'On it.', 'Got it.'];
+      setTimeout(() => {
+        msgs.innerHTML += `<div class="msg agent-msg">${replies[Math.floor(Math.random()*replies.length)]}</div>`;
+        msgs.scrollTop = msgs.scrollHeight;
+      }, 800);
+    }
+    
+    function updateMobileMissionBoard() {
+      const container = document.getElementById('mobile-mission-list-container');
+      if (!container) return;
+      const occupied = desksData.filter(d => d.status === 'occupied');
+      if (occupied.length === 0) {
+        container.innerHTML = '<p style="font-family:var(--font-mono);font-size:11px;color:var(--mist);padding:16px 0;">No agents assigned yet.</p>';
+        return;
+      }
+      container.innerHTML = occupied.map(d => {
+        const name = d.name || AGENT_NAMES[d.agent] || 'AGENT';
+        return `<div class="mission-row" style="margin-bottom:8px;" onclick="jumpToDesk(${d.id}); closeMobileSheets(); openMobileChat();">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <img src="./office-assets/house_agent_${d.agent}b.png" style="width:40px; height:40px; object-fit:contain; border-radius:50%; background:rgba(0,0,0,0.5);" />
+            <div>
+              <div style="font-family:var(--font-mono);font-size:10px;color:var(--text);letter-spacing:0.1em;">${name}</div>
+              <div style="font-family:var(--font-mono);font-size:9px;color:var(--mist);margin-top:2px;">DESK ${d.id}</div>
+            </div>
+          </div>
+          <div class="mission-badge">ACTIVE</div>
+        </div>`;
+      }).join('');
+    }
+    
+    function mobilePortalTab(tabId) {
+       const el = document.querySelector(`.nav-item[onclick*="portalTab('${tabId}'"]`);
+       if(el) portalTab(tabId, el);
+       
+       const mDashTabs = document.querySelectorAll('.panel');
+       mDashTabs.forEach(p => p.classList.remove('active'));
+       
+       document.getElementById(`portal-panel-${tabId}`).classList.add('active');
+       if(tabId !== 'dashboard') {
+         document.getElementById('mobile-portal').style.display = 'none';
+       } else {
+         document.getElementById('mobile-portal').style.display = 'flex';
+       }
+    }
+
+  </script>
+</body>
+</html>
