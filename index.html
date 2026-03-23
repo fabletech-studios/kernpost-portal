@@ -1745,7 +1745,16 @@
       if(gNav) gNav.style.display = 'none';
       const gFoot = document.getElementById('site-footer');
       if(gFoot) gFoot.style.display = 'none';
-      
+
+      // Check for demo mode
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('demo') === 'KERNPOST2025') {
+        const app = document.getElementById('app');
+        if (app) app.style.display = 'flex';
+        activateDemoMode();
+        return;
+      }
+
       const app = document.getElementById('app');
       const adminView = document.getElementById('admin-view');
 
@@ -1757,6 +1766,37 @@
         if (adminView) adminView.style.display = 'none';
         renderPortalState();
       }
+    }
+
+    function activateDemoMode() {
+      // Hide auth, show portal directly
+      document.getElementById('auth-view').style.display = 'none';
+      document.getElementById('portal-view').style.display = 'flex';
+      document.getElementById('user-email').innerText = 'demo@kernpost.com';
+
+      // Set Elite tier
+      CURRENT_TIER = 'Elite';
+
+      // Pre-assign all agents
+      const agents = ['m1','m2','m3','f1','f2','f3','m1','f3'];
+      agents.forEach((agentId, i) => {
+        desksData[i].status = 'occupied';
+        desksData[i].agent = agentId;
+        desksData[i].variant = 'a';
+        desksData[i].name = Object.values(AGENT_NAMES)[i % 6];
+      });
+
+      renderOfficeDesks();
+      if (window.innerWidth <= 768) renderMobileDesk(1);
+
+      // Demo mode badge
+      document.body.insertAdjacentHTML('beforeend',
+        '<div style="position:fixed;top:8px;right:8px;z-index:9999;background:rgba(129,64,61,0.9);' +
+        'color:#E8E2E5;font-family:JetBrains Mono,monospace;font-size:9px;letter-spacing:0.15em;' +
+        'padding:4px 8px;border-radius:4px;pointer-events:none;">DEMO MODE</div>');
+
+      // Flag for sendMessage to use scripted responses
+      window.demoMode = true;
     }
 
     async function renderPortalState() {
