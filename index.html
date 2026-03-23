@@ -2045,6 +2045,7 @@
     function openAgentChat(deskId) {
       const dData = desksData.find(d => d.id === deskId);
       if (!dData || dData.status !== 'occupied') return;
+      activeChatSlot = deskId;
 
       const name = dData.name || AGENT_NAMES[dData.agent] || 'AGENT';
       document.getElementById('chat-agent-name').innerText = name;
@@ -2065,25 +2066,95 @@
       input.onkeydown = (e) => { if (e.key === 'Enter') sendMessage(name); };
     }
 
-    function sendMessage(agentName) {
+    let activeChatSlot = null;
+
+    async function sendMessage(agentName) {
       const input = document.querySelector('.chat-input-area input');
-      const text = input.value.trim();
-      if (!text) return;
+      const text = input ? input.value.trim() : '';
+      if (!text || activeChatSlot === null) return;
+
       const msgs = document.getElementById('chat-messages-container');
+      if (!msgs) return;
+
+      // Show user message immediately
       msgs.innerHTML += `<div class="msg user-msg">${text}</div>`;
       input.value = '';
       msgs.scrollTop = msgs.scrollHeight;
-      const replies = [
-        'Understood. Processing your request.',
-        'On it. I\'ll flag anything that needs your attention.',
-        'Got it. Running that in the background.',
-        'Confirmed. I\'ll update the mission board when complete.',
-        'Received. Executing now.'
-      ];
-      setTimeout(() => {
-        msgs.innerHTML += `<div class="msg agent-msg">${replies[Math.floor(Math.random()*replies.length)]}</div>`;
+
+      // Typing indicator
+      const typingId = 'typing-' + Date.now();
+      msgs.innerHTML += `<div class="msg agent-msg" id="${typingId}" style="opacity:0.5;">
+        <div class="msg-sender">${agentName}</div>
+        <span class="typing-dots">···</span>
+      </div>`;
+      msgs.scrollTop = msgs.scrollHeight;
+
+      // Demo mode — scripted responses
+      if (window.demoMode) {
+        const demoResponses = [
+          'Analyzing your request... I\'ve identified 3 action items and scheduled follow-ups with all relevant parties.',
+          'Done. I\'ve updated the records, sent the notifications, and flagged one item for your review.',
+          'Completed. Report generated and filed. No anomalies detected in today\'s operations.',
+          'On it. Cross-referencing your inventory data now — I\'ll have a full stock report ready in 30 seconds.',
+          'Understood. I\'ve drafted the response, checked compliance, and queued it for your approval.'
+        ];
+        setTimeout(() => {
+          const typing = document.getElementById(typingId);
+          if (typing) typing.remove();
+          msgs.innerHTML += `<div class="msg agent-msg">
+            <div class="msg-sender">${agentName} <span style="color:var(--sage);font-size:9px;">● LIVE</span></div>
+            ${demoResponses[Math.floor(Math.random() * demoResponses.length)]}
+          </div>`;
+          msgs.scrollTop = msgs.scrollHeight;
+        }, 1200);
+        return;
+      }
+
+      try {
+        // Get current user ID
+        let customerId = null;
+        if (supabaseClient) {
+          const { data } = await supabaseClient.auth.getSession();
+          customerId = data?.session?.user?.id || null;
+        }
+
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: text,
+            customerId,
+            deskNumber: activeChatSlot,
+            agentName
+          })
+        });
+
+        const data = await response.json();
+
+        // Remove typing indicator
+        const typing = document.getElementById(typingId);
+        if (typing) typing.remove();
+
+        // Show response with source label
+        const sourceLabel = data.source === 'kernbox' ?
+          `<span style="color:var(--sage);font-size:9px;margin-left:4px;">● LIVE</span>` :
+          data.source === 'offline' ?
+          `<span style="color:var(--rose);font-size:9px;margin-left:4px;">○ OFFLINE</span>` : '';
+
+        msgs.innerHTML += `<div class="msg agent-msg">
+          <div class="msg-sender">${agentName}${sourceLabel}</div>
+          ${data.reply}
+        </div>`;
         msgs.scrollTop = msgs.scrollHeight;
-      }, 800);
+
+      } catch (err) {
+        const typing = document.getElementById(typingId);
+        if (typing) typing.remove();
+        msgs.innerHTML += `<div class="msg agent-msg">
+          <div class="msg-sender">${agentName}</div>
+          Connection error. Please try again.
+        </div>`;
+      }
     }
 
     function openMissionBoard() {
@@ -2395,21 +2466,85 @@
       openMobileSheet('more-sheet');
     }
 
-    function sendMobileMessage() {
+    async function sendMobileMessage() {
+      const dData = desksData.find(d => d.id === currentMobileDesk);
+      if (!dData || dData.status !== 'occupied') return;
+      const agentName = dData.name || AGENT_NAMES[dData.agent] || 'AGENT';
+
       const input = document.getElementById('mobile-chat-input');
-      const text = input.value.trim();
+      const text = input ? input.value.trim() : '';
       if (!text) return;
-      
+
       const msgs = document.getElementById('mobile-chat-messages-container');
+      if (!msgs) return;
+
       msgs.innerHTML += `<div class="msg user-msg">${text}</div>`;
       input.value = '';
       msgs.scrollTop = msgs.scrollHeight;
-      
-      const replies = ['Understood. Processing your request.', 'On it.', 'Got it.'];
-      setTimeout(() => {
-        msgs.innerHTML += `<div class="msg agent-msg">${replies[Math.floor(Math.random()*replies.length)]}</div>`;
+
+      const typingId = 'mtyping-' + Date.now();
+      msgs.innerHTML += `<div class="msg agent-msg" id="${typingId}" style="opacity:0.5;">
+        <span class="typing-dots">···</span>
+      </div>`;
+      msgs.scrollTop = msgs.scrollHeight;
+
+      // Demo mode
+      if (window.demoMode) {
+        const demoResponses = [
+          'Analyzing your request... I\'ve identified 3 action items and scheduled follow-ups.',
+          'Done. Records updated, notifications sent, one item flagged for review.',
+          'Completed. Report generated and filed. No anomalies detected.',
+          'On it. Cross-referencing inventory data now.',
+          'Understood. Response drafted, compliance checked, queued for approval.'
+        ];
+        setTimeout(() => {
+          const typing = document.getElementById(typingId);
+          if (typing) typing.remove();
+          msgs.innerHTML += `<div class="msg agent-msg">
+            ${demoResponses[Math.floor(Math.random() * demoResponses.length)]}
+          </div>`;
+          msgs.scrollTop = msgs.scrollHeight;
+        }, 1200);
+        return;
+      }
+
+      try {
+        let customerId = null;
+        if (supabaseClient) {
+          const { data } = await supabaseClient.auth.getSession();
+          customerId = data?.session?.user?.id || null;
+        }
+
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: text,
+            customerId,
+            deskNumber: currentMobileDesk,
+            agentName
+          })
+        });
+
+        const data = await response.json();
+        const typing = document.getElementById(typingId);
+        if (typing) typing.remove();
+
+        const sourceLabel = data.source === 'kernbox' ?
+          `<span style="color:var(--sage);font-size:9px;">● LIVE</span>` :
+          data.source === 'offline' ?
+          `<span style="color:var(--rose);font-size:9px;">○ OFFLINE</span>` : '';
+
+        msgs.innerHTML += `<div class="msg agent-msg">
+          ${agentName} ${sourceLabel}<br>${data.reply}
+        </div>`;
         msgs.scrollTop = msgs.scrollHeight;
-      }, 800);
+
+      } catch (err) {
+        const typing = document.getElementById(typingId);
+        if (typing) typing.remove();
+        msgs.innerHTML += `<div class="msg agent-msg">Connection error. Try again.</div>`;
+      }
     }
     
     function updateMobileMissionBoard() {
