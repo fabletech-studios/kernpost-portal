@@ -1931,9 +1931,20 @@
             </svg>
             <span>${msg}</span>
           </div>
-          <button onclick="document.getElementById('kernbox-notice').remove(); document.getElementById('portal-view').style.marginTop = '0';" style="background:none;border:none;color:var(--mist);cursor:pointer;font-size:16px;line-height:1;padding:0;">×</button>`;
+          <button onclick="document.getElementById('kernbox-notice').remove(); document.getElementById('notice-spacer') && document.getElementById('notice-spacer').remove();" style="background:none;border:none;color:var(--mist);cursor:pointer;font-size:16px;line-height:1;padding:0;">×</button>`;
         document.body.appendChild(notice);
-        document.getElementById('portal-view').style.marginTop = '37px';
+        // Use a spacer div inside portal-view instead of margin-top
+        // This way fixed-position mobile portal is unaffected
+        let spacer = document.getElementById('notice-spacer');
+        if (!spacer) {
+          spacer = document.createElement('div');
+          spacer.id = 'notice-spacer';
+          spacer.style.cssText = 'height:37px;flex-shrink:0;width:100%;display:block;';
+          const sidebar = document.getElementById('sidebar');
+          if (sidebar) sidebar.prepend(spacer.cloneNode());
+          const contentArea = document.getElementById('content-area');
+          if (contentArea) contentArea.prepend(spacer);
+        }
       }
     }
 
@@ -2036,6 +2047,9 @@
         document.getElementById('auth-view').style.display = 'none';
         document.getElementById('portal-view').style.display = 'flex';
         document.getElementById('user-email').innerText = session.user.email;
+        // Hide tier selector for real users — tier comes from Supabase
+        const ts = document.getElementById('tier-selector');
+        if (ts) ts.style.display = 'none';
         await loadAgentSlots();
         renderOfficeDesks();
         checkKernBoxStatus(session.user.id);
