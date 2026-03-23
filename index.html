@@ -1897,7 +1897,15 @@
             variant: variant || 'a',
             agent_name: name || null
           }, { onConflict: 'customer_id,desk_number' });
-        if (error) console.error('saveAgentSlot error:', error.message, error.details, error.hint);
+        if (error) {
+          console.error('saveAgentSlot error:', error.message, error.details, error.hint);
+          // Show visible toast so we can debug
+          const t = document.createElement('div');
+          t.textContent = 'Save error: ' + error.message;
+          t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#81403D;color:#E8E2E5;font-family:JetBrains Mono,monospace;font-size:10px;padding:8px 16px;border-radius:4px;z-index:9999;';
+          document.body.appendChild(t);
+          setTimeout(() => t.remove(), 5000);
+        }
       }
     }
 
