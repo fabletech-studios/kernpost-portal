@@ -944,6 +944,18 @@
       .generic-panel { padding: 24px; }
     }
 
+    /* --- ADMIN VIEW --- */
+    .admin-tab { color: var(--mist); font-family: var(--font-mono); font-size: 11px; text-decoration: none; padding: 4px 8px; transition: color 0.2s; border-radius: 4px; border: 1px solid transparent; }
+    .admin-tab:hover { color: var(--sage); }
+    .admin-tab.active { color: var(--text); border-color: var(--border-mid); background: rgba(114,103,111,0.1); }
+    .table-wrap { width: 100%; overflow-x: auto; margin-top: 16px; border: 1px solid var(--border-light); border-radius: var(--radius); }
+    table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 11px; text-align: left; }
+    th { background: #121315; padding: 12px; border-bottom: 1px solid var(--border-light); color: var(--sub); font-weight: normal; }
+    td { padding: 12px; border-bottom: 1px solid var(--border-light); color: var(--text); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(114, 103, 111, 0.05); }
+    .admin-panel h2 { margin-bottom: 0; }
+
   </style>
 </head>
 <body>
@@ -951,6 +963,49 @@
   <!-- Mock Global Site Elements -->
   <nav id="site-nav"></nav>
   
+  <!-- SITE ADMIN -->
+  <div id="admin-view" style="display: none; width: 100vw; height: 100vh; flex-direction: column; background: var(--void); color: var(--text); overflow-y: auto;">
+    
+    <!-- Admin Login Overlay -->
+    <div id="admin-login-overlay" style="position: absolute; inset: 0; background: var(--void); z-index: 100; display: flex; align-items: center; justify-content: center;">
+      <div style="border: 1px solid var(--border-mid); padding: 40px; border-radius: 6px; width: 320px; text-align: center;">
+        <h2 style="margin-bottom: 24px;">ADMIN PORTAL</h2>
+        <input type="text" id="admin-user" placeholder="USERNAME" class="mono" style="margin-bottom: 12px;" />
+        <input type="password" id="admin-pwd" placeholder="PASSWORD" class="mono" style="margin-bottom: 24px;" />
+        <button class="primary" onclick="adminLogin()" style="width: 100%;">AUTHENTICATE</button>
+        <div id="admin-error" style="color: var(--rust); font-size: 11px; margin-top: 12px; display: none;">ACCESS DENIED</div>
+      </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="admin-dashboard" style="display: none; flex: 1; flex-direction: column;">
+      <div style="display: flex; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--border-light); background: #121315;">
+        <div style="font-family: var(--font-mono); font-size: 16px; font-weight: bold; margin-right: 40px; color: var(--sage);">KERN<span style="color:var(--text);">POST</span> ADMIN</div>
+        <div style="display: flex; gap: 24px; flex: 1;">
+          <a href="#" class="admin-tab active" onclick="switchAdminTab('leads', event)">LEADS</a>
+          <a href="#" class="admin-tab" onclick="switchAdminTab('customers', event)">CUSTOMERS</a>
+          <a href="#" class="admin-tab" onclick="switchAdminTab('installations', event)">INSTALLATIONS</a>
+        </div>
+        <button class="ghost" onclick="window.location.hash='#/'">EXIT ALIAS</button>
+      </div>
+      
+      <div style="padding: 24px; flex: 1; overflow-y: auto;">
+        <div id="admin-tab-leads" class="admin-panel" style="display: block;">
+          <h2>RAW LEADS</h2>
+          <div class="table-wrap"><table id="table-leads"></table></div>
+        </div>
+        <div id="admin-tab-customers" class="admin-panel" style="display: none;">
+          <h2>SUBSCRIBED CUSTOMERS</h2>
+          <div class="table-wrap"><table id="table-customers"></table></div>
+        </div>
+        <div id="admin-tab-installations" class="admin-panel" style="display: none;">
+          <h2>HARDWARE INSTALLATIONS</h2>
+          <div class="table-wrap"><table id="table-installations"></table></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="app">
     
     <!-- AUTH VIEW -->
@@ -1486,7 +1541,17 @@
       const gFoot = document.getElementById('site-footer');
       if(gFoot) gFoot.style.display = 'none';
       
-      renderPortalState();
+      const app = document.getElementById('app');
+      const adminView = document.getElementById('admin-view');
+
+      if (window.location.hash === '#/admin') {
+        if (app) app.style.display = 'none';
+        if (adminView) adminView.style.display = 'flex';
+      } else {
+        if (app) app.style.display = 'flex';
+        if (adminView) adminView.style.display = 'none';
+        renderPortalState();
+      }
     }
 
     async function renderPortalState() {
@@ -1882,10 +1947,70 @@
     }
 
     // Initialize
+    window.addEventListener('hashchange', router);
+
     window.onload = () => {
       router();
       if(typeof initMobile === 'function') initMobile();
     };
+
+    // --- ADMIN LOGIC ---
+    let isAdminLoggedIn = false;
+
+    function adminLogin() {
+      const u = document.getElementById('admin-user').value;
+      const p = document.getElementById('admin-pwd').value;
+      if (u === 'admin' && p === 'kernpost2025') {
+        isAdminLoggedIn = true;
+        document.getElementById('admin-login-overlay').style.display = 'none';
+        document.getElementById('admin-dashboard').style.display = 'flex';
+        loadAdminData();
+      } else {
+        document.getElementById('admin-error').style.display = 'block';
+      }
+    }
+
+    function switchAdminTab(tab, e) {
+      if(e) e.preventDefault();
+      document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+      if(e) e.target.classList.add('active');
+      document.querySelectorAll('.admin-panel').forEach(p => p.style.display = 'none');
+      document.getElementById('admin-tab-' + tab).style.display = 'block';
+    }
+
+    async function loadAdminData() {
+      if (!supabaseClient) return;
+      
+      // Leads
+      const { data: leads } = await supabaseClient.from('leads').select('*').order('created_at', { ascending: false });
+      renderTable('table-leads', leads, ['id', 'created_at', 'name', 'email', 'phone', 'company']);
+      
+      // Customers
+      const { data: customers } = await supabaseClient.from('customers').select('*').order('created_at', { ascending: false });
+      renderTable('table-customers', customers, ['id', 'created_at', 'tier', 'status']);
+      
+      // Installations
+      const { data: inst } = await supabaseClient.from('installations').select('*').order('created_at', { ascending: false });
+      renderTable('table-installations', inst, ['id', 'customer_id', 'serial_number', 'status', 'tier']);
+    }
+
+    function renderTable(tableId, data, columns) {
+      const table = document.getElementById(tableId);
+      if (!data || data.length === 0) {
+        table.innerHTML = '<tr><td style="text-align:center; padding: 24px; color: var(--mist);">NO DATA RECORDED IN SYSTEM</td></tr>';
+        return;
+      }
+      
+      let html = '<tr>' + columns.map(c => `<th>${c.toUpperCase()}</th>`).join('') + '</tr>';
+      data.forEach(row => {
+        html += '<tr>' + columns.map(c => {
+          let val = row[c] || '-';
+          if (c === 'created_at' && val !== '-') val = new Date(val).toLocaleDateString();
+          return `<td>${val}</td>`;
+        }).join('') + '</tr>';
+      });
+      table.innerHTML = html;
+    }
 
     // --- MOBILE AGENT CARDS LOGIC --- //
     let currentMobileDesk = 1;
