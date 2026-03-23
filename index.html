@@ -1461,8 +1461,23 @@
       name: null        // custom name override, else uses AGENT_NAMES
     }));
 
-    let authMode = 'signin'; 
-    
+    let authMode = 'signin';
+
+    // Listen for auth state changes (session persist on refresh, sign-out, etc.)
+    if (supabaseClient) {
+      supabaseClient.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          document.getElementById('auth-view').style.display = 'none';
+          document.getElementById('portal-view').style.display = 'flex';
+          document.getElementById('user-email').innerText = session.user.email;
+          renderOfficeDesks();
+        } else if (event === 'SIGNED_OUT') {
+          document.getElementById('auth-view').style.display = 'flex';
+          document.getElementById('portal-view').style.display = 'none';
+        }
+      });
+    }
+
     // Core Functions
     function router() {
       // Hide global site elements safely if they exist
@@ -1486,11 +1501,15 @@
         document.getElementById('portal-view').style.display = 'flex';
         document.getElementById('user-email').innerText = session.user.email;
         renderOfficeDesks();
-      } else {
-        // Fallback demo/MOCK mode if unauthenticated or Supabase unconfigured
+      } else if (!supabaseClient) {
+        // No Supabase configured — MOCK/demo mode
         document.getElementById('auth-view').style.display = 'none';
         document.getElementById('portal-view').style.display = 'flex';
         renderOfficeDesks();
+      } else {
+        // Supabase configured but no session — show login
+        document.getElementById('auth-view').style.display = 'flex';
+        document.getElementById('portal-view').style.display = 'none';
       }
     }
 
