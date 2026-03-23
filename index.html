@@ -1226,7 +1226,15 @@
       <!-- SIDEBAR -->
       <aside id="sidebar">
         <div class="sidebar-top">
-          <div class="sidebar-brand">KERNPOST</div>
+          <div class="sidebar-logo">
+            <pre class="kern-ascii" id="kern-ascii-portal" style="font-family:'JetBrains Mono',monospace;font-size:5.5px;line-height:1.1;color:#90A6A7;margin:0;padding:0;white-space:pre;opacity:0;">██╗  ██╗███████╗██████╗ ███╗   ██╗
+██║ ██╔╝██╔════╝██╔══██╗████╗  ██║
+█████╔╝ █████╗  ██████╔╝██╔██╗ ██║
+██╔═██╗ ██╔══╝  ██╔══██╗██║╚██╗██║
+██║  ██╗███████╗██║  ██║██║ ╚████║
+╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝</pre>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:7px;color:#9A8D9B;letter-spacing:0.08em;margin-top:4px;opacity:0;" id="kern-sub-portal">POST — Intelligence Infrastructure</div>
+          </div>
           <div class="nav-list">
             <div class="nav-item active" onclick="portalTab('dashboard', this)">
               <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
@@ -1995,6 +2003,26 @@
       }
     }
 
+    function animateKernLogo(asciiId, subId) {
+      const ascii = document.getElementById(asciiId);
+      const sub = document.getElementById(subId);
+      if (!ascii) return;
+      const lines = ascii.textContent.split('\n');
+      ascii.textContent = '';
+      ascii.style.opacity = '1';
+      let i = 0;
+      function nextLine() {
+        if (i < lines.length) {
+          ascii.textContent += (i > 0 ? '\n' : '') + lines[i];
+          i++;
+          setTimeout(nextLine, 60);
+        } else if (sub) {
+          setTimeout(() => { sub.style.opacity = '1'; sub.style.transition = 'opacity 0.5s'; }, 100);
+        }
+      }
+      nextLine();
+    }
+
     async function renderPortalState() {
       let session = null;
       if (supabaseClient) {
@@ -2009,11 +2037,13 @@
         await loadAgentSlots();
         renderOfficeDesks();
         checkKernBoxStatus(session.user.id);
+        animateKernLogo('kern-ascii-portal', 'kern-sub-portal');
       } else if (!supabaseClient) {
         // No Supabase configured — MOCK/demo mode
         document.getElementById('auth-view').style.display = 'none';
         document.getElementById('portal-view').style.display = 'flex';
         renderOfficeDesks();
+        animateKernLogo('kern-ascii-portal', 'kern-sub-portal');
       } else {
         // Supabase configured but no session — show login
         document.getElementById('auth-view').style.display = 'flex';
