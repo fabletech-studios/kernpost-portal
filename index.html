@@ -923,18 +923,12 @@
         background: var(--void);
         flex-shrink: 0;
       }
+      /* Non-dashboard panels use same .panel.active system on mobile too */
       #portal-panel-billing,
       #portal-panel-tickets,
       #portal-panel-docs {
-        display: none;
+        overflow-y: auto;
         flex-direction: column;
-        height: 100dvh;
-        overflow: hidden;
-      }
-      #portal-panel-billing.mobile-active,
-      #portal-panel-tickets.mobile-active,
-      #portal-panel-docs.mobile-active {
-        display: flex;
       }
       .mobile-panel-header {
         height: 48px;
@@ -946,6 +940,12 @@
         gap: 12px;
         flex-shrink: 0;
       }
+    }
+    /* Hide mobile-panel-header on desktop */
+    @media (min-width: 769px) {
+      .mobile-panel-header { display: none !important; }
+    }
+    @media (max-width: 768px) {
       .mobile-back-btn {
         background: none;
         border: none;
@@ -1800,6 +1800,42 @@
     }
 
     // Agent memory persistence — load saved desk assignments from Supabase
+    async function checkKernBoxStatus(userId) {
+      // Show a notice banner if no active KernBox is connected
+      const existing = document.getElementById('kernbox-notice');
+      if (existing) existing.remove();
+      if (!supabaseClient) return;
+      const { data: inst } = await supabaseClient
+        .from('installations')
+        .select('id, endpoint_active')
+        .eq('customer_id', userId)
+        .limit(1);
+      const hasActive = inst && inst.length > 0 && inst[0].endpoint_active;
+      const hasAny = inst && inst.length > 0;
+      if (!hasActive) {
+        const msg = !hasAny
+          ? 'No KernBox registered. Contact your account manager to complete your setup.'
+          : 'Your KernBox is registered but not yet connected. Power it on and ensure it has internet access.';
+        const notice = document.createElement('div');
+        notice.id = 'kernbox-notice';
+        notice.innerHTML = `
+          <div style="display:flex;align-items:center;gap:10px;">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink:0">
+              <circle cx="8" cy="8" r="7" stroke="#B79D9B" stroke-width="1.5"/>
+              <path d="M8 5v4" stroke="#B79D9B" stroke-width="1.5" stroke-linecap="round"/>
+              <circle cx="8" cy="11.5" r="0.75" fill="#B79D9B"/>
+            </svg>
+            <span>${msg}</span>
+          </div>
+          <button onclick="document.getElementById('kernbox-notice').remove()" style="background:none;border:none;color:var(--mist);cursor:pointer;font-size:16px;line-height:1;padding:0;">×</button>`;
+        notice.style.cssText = `position:fixed;top:0;left:0;right:0;z-index:500;
+          background:rgba(129,64,61,0.12);border-bottom:1px solid rgba(183,157,155,0.3);
+          padding:10px 20px;display:flex;align-items:center;justify-content:space-between;
+          font-family:var(--font-mono);font-size:10px;color:var(--rose);letter-spacing:0.08em;`;
+        document.body.appendChild(notice);
+      }
+    }
+
     async function loadAgentSlots() {
       if (!supabaseClient) return;
       const { data: { session } } = await supabaseClient.auth.getSession();
@@ -1872,6 +1908,7 @@
         document.getElementById('user-email').innerText = session.user.email;
         await loadAgentSlots();
         renderOfficeDesks();
+        checkKernBoxStatus(session.user.id);
       } else if (!supabaseClient) {
         // No Supabase configured — MOCK/demo mode
         document.getElementById('auth-view').style.display = 'none';
@@ -2115,11 +2152,13 @@
 
     function setTier(tier) {
       CURRENT_TIER = tier;
-      // Update UI buttons
+      // Update UI buttons (only if visible — hidden on mobile)
       document.querySelectorAll('.tier-btn').forEach(b => b.classList.remove('active'));
-      document.getElementById(`tier-btn-${tier}`).classList.add('active');
+      const tierBtn = document.getElementById(`tier-btn-${tier}`);
+      if (tierBtn) tierBtn.classList.add('active');
       const count = TIER_CONFIG[tier].active;
-      document.getElementById('tier-active-label').textContent =
+      const tierLabel = document.getElementById('tier-active-label');
+      if (tierLabel) tierLabel.textContent =
         count === 8 ? 'UNLIMITED AGENTS' : `${count} AGENT${count > 1 ? 'S' : ''} ACTIVE`;
       renderOfficeDesks();
     }
@@ -2675,14 +2714,28 @@
       }).join('');
     }
     
+    function mobileGoBack() {
+      mobilePortalTab('dashboard');
+      // Reset nav highlight to MY OFFICE
+      document.querySelectorAll('#mobile-nav-sheet .nav-item').forEach((n, i) => {
+        n.classList.toggle('active', i === 0);
+      });
+    }
+
     function mobilePortalTab(tabId) {
       if (window.innerWidth <= 768) {
-        document.querySelectorAll('[id^="portal-panel-"]').forEach(p => {
-          p.classList.remove('mobile-active');
-          p.style.display = 'none';
-        });
+        // Use same .active class system as desktop portalTab
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
         const target = document.getElementById(`portal-panel-${tabId}`);
-        if (target) { target.style.display = 'flex'; target.classList.add('mobile-active'); }
+        if (target) target.classList.add('active');
+        // Update mobile nav-sheet active item
+        document.querySelectorAll('#mobile-nav-sheet .nav-item').forEach(n => {
+          n.classList.toggle('active', n.textContent.trim().toLowerCase().includes(tabId));
+        });
+        // Show back-button header panels — dashboard has none
+        document.querySelectorAll('.mobile-panel-header').forEach(h => {
+          h.style.display = tabId === 'dashboard' ? 'none' : 'flex';
+        });
       } else {
         portalTab(tabId, document.querySelector(`.nav-item[onclick*="${tabId}"]`));
       }
