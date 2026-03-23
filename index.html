@@ -1861,7 +1861,7 @@
         return;
       }
 
-      // ACTAUL AUTH
+      // ACTUAL AUTH
       const { data, error } = authMode === 'signin' 
         ? await supabaseClient.auth.signInWithPassword({ email, password: pwd })
         : await supabaseClient.auth.signUp({ email, password: pwd });
