@@ -1799,6 +1799,66 @@
       window.demoMode = true;
     }
 
+    // Agent memory persistence — load saved desk assignments from Supabase
+    async function loadAgentSlots() {
+      if (!supabaseClient) return;
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session) return;
+
+      const { data: slots } = await supabaseClient
+        .from('agent_slots')
+        .select('*')
+        .eq('customer_id', session.user.id);
+
+      if (slots && slots.length > 0) {
+        slots.forEach(slot => {
+          const desk = desksData.find(d => d.id === slot.desk_number);
+          if (desk && slot.agent_type) {
+            desk.status = 'occupied';
+            desk.agent = slot.agent_type;
+            desk.variant = slot.variant || 'a';
+            desk.name = slot.agent_name || null;
+          }
+        });
+        // Also set tier from customers table
+        const { data: customer } = await supabaseClient
+          .from('customers')
+          .select('tier')
+          .eq('id', session.user.id)
+          .single();
+        if (customer?.tier) {
+          CURRENT_TIER = customer.tier;
+          setTier(customer.tier);
+        }
+      }
+    }
+
+    // Save a single desk slot to Supabase (called after assign/remove)
+    async function saveAgentSlot(deskNumber, agentId, variant, name) {
+      if (!supabaseClient) return;
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session) return;
+
+      if (!agentId) {
+        await supabaseClient
+          .from('agent_slots')
+          .delete()
+          .eq('customer_id', session.user.id)
+          .eq('desk_number', deskNumber);
+      } else {
+        await supabaseClient
+          .from('agent_slots')
+          .upsert({
+            customer_id: session.user.id,
+            desk_number: deskNumber,
+            agent_type: agentId,
+            variant: variant || 'a',
+            agent_name: name || null,
+            status: 'active'
+          }, { onConflict: 'customer_id,desk_number' });
+      }
+    }
+
     async function renderPortalState() {
       let session = null;
       if (supabaseClient) {
@@ -1810,6 +1870,7 @@
         document.getElementById('auth-view').style.display = 'none';
         document.getElementById('portal-view').style.display = 'flex';
         document.getElementById('user-email').innerText = session.user.email;
+        await loadAgentSlots();
         renderOfficeDesks();
       } else if (!supabaseClient) {
         // No Supabase configured — MOCK/demo mode
@@ -2005,7 +2066,8 @@
     }
 
     function confirmRemoveAgent() {
-      const dData = desksData.find(d => d.id === activeConfigDeskId);
+      const deskId = activeConfigDeskId;
+      const dData = desksData.find(d => d.id === deskId);
       if (dData) {
         dData.status = 'empty';
         dData.agent = null;
@@ -2016,6 +2078,7 @@
       closeModals();
       renderOfficeDesks();
       updateMissionBoard();
+      saveAgentSlot(deskId, null, null, null);
     }
 
     function cancelRemove() {
@@ -2038,7 +2101,8 @@
 
     function assignAgent(baseId) {
       if (!activeConfigDeskId) return;
-      const dData = desksData.find(d => d.id === activeConfigDeskId);
+      const deskId = activeConfigDeskId;
+      const dData = desksData.find(d => d.id === deskId);
       dData.status = 'occupied';
       dData.agent = baseId;
       dData.variant = 'a';
@@ -2046,6 +2110,7 @@
       closeModals();
       renderOfficeDesks();
       updateMissionBoard();
+      saveAgentSlot(deskId, baseId, 'a', null);
     }
 
     function setTier(tier) {
