@@ -350,12 +350,11 @@
     }
     
     .img-taskboard {
-      /* Based on taskboard.png 407x445 mapped to 1996x1491 manually.
-         Around left: 63%, top: 12% looks about right on back right wall */
       width: calc(407 / 1996 * 100%);
       height: calc(445 / 1491 * 100%);
-      left: 62.5%; 
-      top: 11%;
+      left: calc(1050 / 1996 * 100%);
+      top: calc(80 / 1491 * 100%);
+      z-index: 4;
       cursor: pointer;
       transition: filter 0.3s;
     }
@@ -364,14 +363,12 @@
     }
 
     .img-window {
-      /* Based on office_window_left.png 677x666.
-         The glass panes are left:236/1996 (11.8%) and 553/1996 (27.7%)
-         We'll position the window img roughly left 8%, top 9% */
       width: calc(677 / 1996 * 100%);
       height: calc(666 / 1491 * 100%);
-      left: 8.5%;
-      top: 8.5%;
+      left: calc(165 / 1996 * 100%);
+      top: calc(120 / 1491 * 100%);
       pointer-events: none;
+      z-index: 3;
     }
 
     /* Sky background visible through panes */
@@ -1689,14 +1686,14 @@
     
     // Calibrated slot coordinates + fill offsets (fillDx/fillDy shift wrapper when agent assigned)
     const OFFICE_SLOT_COORDS = {
-      1: { left: 98,  top: 667,  fillDx: -123, fillDy: -89  },
-      2: { left: 466, top: 450,  fillDx: -89,  fillDy: -107 },
-      3: { left: 816, top: 248,  fillDx: -131, fillDy: -93  },
-      4: { left: 415, top: 855,  fillDx: -104, fillDy: -88  },
-      5: { left: 782, top: 637,  fillDx: -97,  fillDy: -106 },
-      6: { left: 1139,top: 436,  fillDx: -130, fillDy: -93  },
-      7: { left: 734, top: 1040, fillDx: -126, fillDy: -107 },
-      8: { left: 1103,top: 823,  fillDx: -128, fillDy: -92  }
+      1: { left: 98,  top: 667,  fillDx: -123, fillDy: -119 },
+      2: { left: 466, top: 450,  fillDx: -89,  fillDy: -137 },
+      3: { left: 816, top: 248,  fillDx: -131, fillDy: -123 },
+      4: { left: 415, top: 855,  fillDx: -104, fillDy: -118 },
+      5: { left: 782, top: 637,  fillDx: -97,  fillDy: -136 },
+      6: { left: 1139,top: 436,  fillDx: -130, fillDy: -123 },
+      7: { left: 734, top: 1040, fillDx: -126, fillDy: -137 },
+      8: { left: 1103,top: 823,  fillDx: -128, fillDy: -122 }
     };
 
     // Tier config — controls how many desks are active vs locked
