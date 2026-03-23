@@ -1888,16 +1888,16 @@
           .eq('customer_id', session.user.id)
           .eq('desk_number', deskNumber);
       } else {
-        await supabaseClient
+        const { error } = await supabaseClient
           .from('agent_slots')
           .upsert({
             customer_id: session.user.id,
             desk_number: deskNumber,
             agent_type: agentId,
             variant: variant || 'a',
-            agent_name: name || null,
-            status: 'active'
+            agent_name: name || null
           }, { onConflict: 'customer_id,desk_number' });
+        if (error) console.error('saveAgentSlot error:', error.message, error.details, error.hint);
       }
     }
 
