@@ -377,10 +377,14 @@
     /* Sky background visible through panes */
     .sky-gradient {
       position: absolute;
-      background: linear-gradient(180deg, #A1C4CD 0%, #E8D5C1 100%);
-      opacity: 0.8;
-      border-radius: 4px; /* subtle roundness behind mullions */
+      background: linear-gradient(180deg, #8BB8C8 0%, #C4D8E2 40%, #E8D5C1 100%);
+      opacity: 0.9;
+      border-radius: 2px;
+      z-index: 2; /* above floor (z:auto/1), below window PNG (z:3) */
     }
+
+    .img-window { z-index: 3; }
+    .room-layer { z-index: 1; }
 
     /* Desks */
     .desk-slot {
@@ -1841,6 +1845,18 @@
       const { data: { session } } = await supabaseClient.auth.getSession();
       if (!session) return;
 
+      // Always load tier first, regardless of whether slots exist
+      const { data: customer } = await supabaseClient
+        .from('customers')
+        .select('tier')
+        .eq('id', session.user.id)
+        .single();
+      if (customer?.tier) {
+        CURRENT_TIER = customer.tier;
+        setTier(customer.tier);
+      }
+
+      // Then load saved desk assignments
       const { data: slots } = await supabaseClient
         .from('agent_slots')
         .select('*')
@@ -1856,16 +1872,6 @@
             desk.name = slot.agent_name || null;
           }
         });
-        // Also set tier from customers table
-        const { data: customer } = await supabaseClient
-          .from('customers')
-          .select('tier')
-          .eq('id', session.user.id)
-          .single();
-        if (customer?.tier) {
-          CURRENT_TIER = customer.tier;
-          setTier(customer.tier);
-        }
       }
     }
 
