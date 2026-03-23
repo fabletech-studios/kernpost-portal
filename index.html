@@ -1868,7 +1868,7 @@
           if (desk && slot.agent_type) {
             desk.status = 'occupied';
             desk.agent = slot.agent_type;
-            desk.variant = slot.variant || 'a';
+            desk.variant = 'a';
             desk.name = slot.agent_name || null;
           }
         });
@@ -1894,7 +1894,6 @@
             customer_id: session.user.id,
             desk_number: deskNumber,
             agent_type: agentId,
-            variant: variant || 'a',
             agent_name: name || null
           }, { onConflict: 'customer_id,desk_number' });
         if (error) {
